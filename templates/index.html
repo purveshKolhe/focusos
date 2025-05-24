@@ -1,28 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyBuddy - Gamified Study Platform</title>
-    <!-- Local static files -->
-    <link href="/static/lib/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+{% extends "base.html" %}
+
+{% block title %}FocusOS - Gamified Study Platform{% endblock %}
+
+{% block extra_css %}
+    {# We can keep styles.css here if it's truly specific to index.html, #}
+    {# but usually common styles are in base.html or a shared CSS file loaded by base.html #}
+    {# For now, assuming styles.css is primarily for index.html's structure #}
     <link rel="stylesheet" href="/static/css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']]
-      },
-      svg: {
-        fontCache: 'global'
-      }
-    };
-    </script>
-</head>
-<body class="relative min-h-screen flex items-center justify-center">
+{% endblock %}
+
+{% block content %}
     <!-- Background Container -->
     <div id="background-container" class="absolute inset-0 z-0">
         <div class="overlay"></div>
@@ -104,9 +91,28 @@
         <div class="fixed top-0 left-0 right-0 bg-black bg-opacity-60 backdrop-blur-sm p-2 z-30 shadow-lg">
             <div class="container mx-auto flex justify-between items-center">
                 <div class="logo-container">
-                    <h1 class="text-3xl font-bold logo-text">StudyBuddy</h1>
+                    <h1 class="text-3xl font-bold logo-text">FocusOS</h1>
                 </div>
-                <div class="flex items-center">
+                <div class="flex items-center space-x-4">
+                    <!-- Notification Bell -->
+                    <div class="relative">
+                        <button id="notification-bell" class="text-white hover:text-purple-300 transition-colors relative">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
+                        </button>
+                        <!-- Notification Panel -->
+                        <div id="notification-panel" class="absolute right-0 mt-2 w-80 bg-gray-900 rounded-lg shadow-lg border border-purple-500 hidden">
+                            <div class="p-3 border-b border-gray-700 flex justify-between items-center">
+                                <h3 class="text-white font-semibold">Notifications</h3>
+                                <button id="clear-notifications" class="text-gray-400 hover:text-white text-sm">
+                                    <i class="fas fa-trash-alt"></i> Clear All
+                                </button>
+                            </div>
+                            <div id="notification-list" class="max-h-96 overflow-y-auto">
+                                <!-- Notifications will be added here -->
+                            </div>
+                        </div>
+                    </div>
                     <button id="sound-toggle" class="text-white p-2 rounded-full hover:bg-opacity-80 transition-all duration-300">
                         <i class="fas fa-volume-up"></i>
                     </button>
@@ -140,6 +146,10 @@
                 <button class="nav-tab" data-target="todo-panel">
                     <i class="fas fa-tasks"></i>
                     <span class="tab-text">To-Do</span>
+                </button>
+                <button class="nav-tab" data-target="rooms-panel">
+                    <i class="fas fa-users"></i>
+                    <span class="tab-text">Study Rooms</span>
                 </button>
             </div>
         </div>
@@ -242,7 +252,7 @@
                         <select id="background-select" class="settings-select">
                             <option value="video1">Forest Stream (Video)</option>
                             <option value="video2">Rainy Window (Video)</option>
-                            <option value="video3">Library Ambience (Video)</option>
+                            <option value="video3">Library Ambience (Video, 0.5x speed)</option>
                             <option value="image1">Starry Night</option>
                             <option value="image2">Ocean Waves</option>
                             <option value="image3">Cozy Cafe</option>
@@ -452,6 +462,37 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Rooms Panel -->
+            <div id="rooms-panel" class="content-panel">
+                <div class="bg-black bg-opacity-60 text-white p-6 rounded-xl max-w-4xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-6 text-center text-purple-300">Study Rooms</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Create Room Card -->
+                        <div class="bg-gray-800 bg-opacity-60 p-6 rounded-lg">
+                            <h3 class="text-xl font-bold mb-4 text-purple-300">
+                                <i class="fas fa-plus-circle mr-2"></i>Create Room
+                            </h3>
+                            <p class="text-gray-300 mb-4">Start a new study session and invite friends to join you.</p>
+                            <a href="{{ url_for('create_room') }}" class="btn-primary w-full text-center">
+                                <i class="fas fa-plus mr-2"></i>Create New Room
+                            </a>
+                        </div>
+                        
+                        <!-- Join Room Card -->
+                        <div class="bg-gray-800 bg-opacity-60 p-6 rounded-lg">
+                            <h3 class="text-xl font-bold mb-4 text-purple-300">
+                                <i class="fas fa-sign-in-alt mr-2"></i>Join Room
+                            </h3>
+                            <p class="text-gray-300 mb-4">Enter a room code to join an existing study session.</p>
+                            <a href="{{ url_for('join_room_route') }}" class="btn-primary w-full text-center">
+                                <i class="fas fa-sign-in-alt mr-2"></i>Join Room
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Focus Mode Overlay -->
@@ -491,12 +532,14 @@
         <source src="/static/assets/sounds/cafe.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- JS Libraries and App Script -->
-    <script src="/static/lib/jquery-3.6.0.min.js"></script>
-    <script src="/static/lib/jquery-ui.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script src="/static/js/script.js"></script>
-</body>
-</html>
+    {# Note: script.js is loaded via base.html through the extra_js block or direct inclusion in base.html #}
+    {# If it's not already in base.html's structure, it needs to be added there. #}
+    {# For now, assuming base.html handles script.js loading. #}
+{% endblock %}
+
+{% block extra_js %}
+    {# If script.js specific to index.html needs to run AFTER base.html's JS, include it here. #}
+    {# However, general purpose scripts like script.js are usually part of base.html #}
+    {# or loaded after jQuery/other libs in base.html #}
+    <script src="/static/js/script.js"></script> {# Ensure this is correctly placed in loading order #}
+{% endblock %}

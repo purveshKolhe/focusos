@@ -2,19 +2,20 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 from pathlib import Path
+import json
 
 def initialize_firebase():
     try:
-        # Check if Firebase is already initialized
         if not firebase_admin._apps:
-            # Get the path to the service account key file
-            current_dir = Path(__file__).parent
-            service_account_path = current_dir / 'serviceAccountKey.json'
-            
-            # Initialize Firebase with the service account key file
-            cred = credentials.Certificate(str(service_account_path))
+            try:
+                # Try environment variable first
+                service_account_info = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT"])
+                cred = credentials.Certificate(service_account_info)
+            except (KeyError, json.JSONDecodeError):
+                # Fallback to local file
+                service_account_path = Path(__file__).parent / "serviceAccountKey.json"
+                cred = credentials.Certificate(str(service_account_path))
             firebase_admin.initialize_app(cred)
-        
         return firestore.client()
     except Exception as e:
         print(f"Error initializing Firebase: {e}")

@@ -1,4 +1,58 @@
 document.addEventListener('DOMContentLoaded', function() {
+    let audioUnlocked = false;
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        const soundIds = ['sound-click', 'sound-levelup', 'sound-complete', 'ambient-rain', 'ambient-forest', 'ambient-cafe'];
+        let unlockedCount = 0;
+
+        soundIds.forEach(id => {
+            const sound = document.getElementById(id);
+            if (sound) {
+                const originalVolume = sound.volume;
+                const originallyMuted = sound.muted;
+                
+                sound.volume = 0.001; // Play very quietly
+                sound.muted = false;   // Ensure not muted for the play attempt
+                
+                // Attempt to play and then immediately pause and reset
+                const playPromise = sound.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        sound.pause();
+                        sound.currentTime = 0;
+                        sound.volume = originalVolume;
+                        sound.muted = originallyMuted;
+                        unlockedCount++;
+                        if (unlockedCount === 1) {
+                            console.log('[Main Interface] Audio context unlocked by user interaction for at least one sound.');
+                        }
+                    }).catch(error => {
+                        // Restore original state even if play failed (e.g. element not ready, but interaction occurred)
+                        sound.volume = originalVolume;
+                        sound.muted = originallyMuted;
+                        // console.warn(`[Main Interface] Failed to play/unlock sound ${id} on interaction:`, error.name, error.message);
+                    });
+                } else {
+                    // Fallback for browsers that don't return a promise (older)
+                    try {
+                        sound.pause();
+                        sound.currentTime = 0;
+                        sound.volume = originalVolume;
+                        sound.muted = originallyMuted;
+                    } catch (e) { /* ignore */ }
+                }
+            }
+        });
+        audioUnlocked = true; // Set to true after the first attempt
+        // console.log('[Main Interface] unlockAudio function executed.');
+        // Listeners are automatically removed due to { once: true }
+    }
+
+    // Add event listeners that will run only once
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true }); // Also unlock on keydown
+    document.addEventListener('touchstart', unlockAudio, { once: true }); // For touch devices
+
     try {
         // Initialize Particles.js for ambient effect
         if (typeof particlesJS !== 'undefined') {
@@ -77,7 +131,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     } catch (error) {
         console.error("An error occurred in script.js:", error);
-        showNotification("Error initializing application", "error");
+        // Use the global addNotification if available, otherwise fallback to alert
+        if (typeof addNotification === 'function') {
+            addNotification("Application Error", "Error initializing application.", "error");
+        } else {
+            alert("Error initializing application. Some features may be impaired.");
+        }
     }
     
     // Vanilla JS fallback if jQuery is not loaded
@@ -109,75 +168,100 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Notification system
-        window.showNotification = function(message, type = "info", duration = 3000) {
-            const notificationId = "notification-" + Date.now();
-            let icon = "";
-            
-            switch(type) {
-                case "success":
-                    icon = '<i class="fas fa-check-circle mr-2"></i>';
-                    break;
-                case "warning":
-                    icon = '<i class="fas fa-exclamation-triangle mr-2"></i>';
-                    break;
-                case "error":
-                    icon = '<i class="fas fa-times-circle mr-2"></i>';
-                    break;
-                default:
-                    icon = '<i class="fas fa-info-circle mr-2"></i>';
-            }
-            
-            const notification = $(`
-                <div id="${notificationId}" class="notification ${type}">
-                    ${icon}${message}
-                </div>
-            `);
-            
-            $("#notification-container").append(notification);
-            
-            setTimeout(() => {
-                notification.css("animation", "slideOut 0.3s ease forwards");
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
-            }, duration);
-        };
-        
-        // Create confetti effect
-        function createConfetti() {
-            if (typeof confetti === 'undefined') {
-                console.warn("Confetti.js is not loaded");
-                return;
-            }
-            
-            const duration = 3000;
-            const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+        // Notification system (local to script.js for main page)
+        // THIS LOCAL SYSTEM IS NOW DEPRECATED in favor of the global notifications.js system.
+        // Calls to showNotification below will be changed to addNotification.
+        // The UI for toasts will be handled by notifications.js's showToastNotification.
+        /*
+        let notifications = [];
+        let unreadCount = 0;
 
-            function randomInRange(min, max) {
-                return Math.random() * (max - min) + min;
-            }
-
-            const interval = setInterval(function() {
-                const timeLeft = animationEnd - Date.now();
-
-                if (timeLeft <= 0) {
-                    return clearInterval(interval);
+        function showNotification(title, content, type = 'info') { // THIS IS THE LOCAL ONE
+            // ... implementation ... // This will be replaced by addNotification or showToastNotification
+        }
+        */
+        // Helper to decide if a notification is purely for local toast or should be global
+        function showUIMessage(title, content, type = 'info', makeGlobal = false) {
+            if (makeGlobal) {
+                if (typeof addNotification === 'function') {
+                    addNotification(title, content, type);
+                } else {
+                    console.warn("addNotification (global) not available. Falling back to local toast for:", title);
+                    if(typeof showToastNotification === 'function') showToastNotification(`${title}: ${content}`, type);
+                    else alert(`${title}: ${content}`);
                 }
+            } else {
+                if(typeof showToastNotification === 'function') { // From notifications.js
+                    showToastNotification(`${title}: ${content}`, type);
+                } else {
+                    alert(`${title}: ${content}`); // Absolute fallback
+                }
+            }
+        }
 
-                const particleCount = 50 * (timeLeft / duration);
-                
-                // Since particles fall down, start a bit higher than random
-                confetti(Object.assign({}, defaults, { 
-                    particleCount,
-                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
-                }));
-                confetti(Object.assign({}, defaults, { 
-                    particleCount,
-                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
-                }));
-            }, 250);
+        function createToastContainer() {
+            let container = document.getElementById('notification-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.className = 'fixed top-24 right-4 z-50 flex flex-col space-y-2 items-end';
+                document.body.appendChild(container);
+            }
+            return container;
+        }
+
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notification-badge');
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notification-list');
+            if (!list) return;
+            
+            list.innerHTML = notifications.map(notification => `
+                <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
+                    <div class="notification-header">
+                        <span class="notification-title">${notification.title}</span>
+                        <span class="notification-time">${formatTimestamp(notification.timestamp)}</span>
+                    </div>
+                    <div class="notification-content">${notification.content}</div>
+                </div>
+            `).join('');
+             if (notifications.length === 0) {
+                list.innerHTML = '<div class="notification-item"><div class="notification-content text-center text-gray-400">No notifications yet.</div></div>';
+            }
+        }
+
+        function clearNotifications() {
+            notifications = [];
+            unreadCount = 0;
+            updateNotificationBadge();
+            renderNotifications();
+        }
+
+        function markAllAsRead() {
+            notifications.forEach(notification => notification.read = true);
+            unreadCount = 0;
+            updateNotificationBadge();
+            renderNotifications();
+        }
+
+        function formatTimestamp(date) {
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) { return 'Just now'; }
+            else if (diff < 3600000) { const m = Math.floor(diff / 60000); return `${m}m ago`; }
+            else if (diff < 86400000) { const h = Math.floor(diff / 3600000); return `${h}h ago`; }
+            else { return date.toLocaleDateString(); }
         }
 
         // Auto grow text box function
@@ -217,56 +301,58 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Checklist Logic
-        if ($("#checklist-modal").length) {
+        if (typeof $ !== 'undefined' && $("#checklist-modal").length) {
             $("#checklist-modal").show();
             console.log("Checklist modal should be visible");
-        } else {
-            console.error("Checklist modal element not found");
-        }
 
-        $("#social-yes").click(function() {
-            console.log("Social Yes button clicked");
-            $("#checklist-step-1").hide();
-            $("#checklist-step-2").show();
-            console.log("Proceeding to checklist step 2");
-            playSound("sound-click");
-        });
-
-        $("#social-no").click(function() {
-            console.log("Social No button clicked");
-            showNotification("Please turn off all social media notifications to proceed.", "warning");
-            playSound("sound-click");
-        });
-
-        if ($("#materials-yes").length) {
-            $("#materials-yes").click(function() {
-                console.log("Materials Yes button clicked (jQuery)");
-                $("#checklist-modal").hide();
-                $("#workspace").removeClass("hidden").show();
-                console.log("Checklist completed, showing workspace (jQuery)");
-                showNotification("Ready to study! Timer is set for 25 minutes.", "success");
+            $("#social-yes").click(function() {
+                console.log("Social Yes button clicked");
+                $("#checklist-step-1").hide();
+                $("#checklist-step-2").show();
+                console.log("Proceeding to checklist step 2");
                 playSound("sound-click");
-                // Play rain sound if selected
-                if ($("#ambient-sound-select").val() === "rain") {
-                    $("#ambient-rain")[0].play().catch(e => console.warn("Error playing sound:", e));
-                }
+            });
+
+            $("#social-no").click(function() {
+                console.log("Social No button clicked");
+                // showNotification("Please turn off all social media notifications to proceed.", "warning");
+                showUIMessage("Study Prep", "Please turn off all social media notifications to proceed.", "warning", true);
+                playSound("sound-click");
+            });
+
+            if ($("#materials-yes").length) {
+                $("#materials-yes").click(function() {
+                    console.log("Materials Yes button clicked (jQuery)");
+                    $("#checklist-modal").hide();
+                    $("#workspace").removeClass("hidden").show();
+                    console.log("Checklist completed, showing workspace (jQuery)");
+                    // showNotification("Ready to study! Timer is set for 25 minutes.", "success");
+                    showUIMessage("Study Prep", "Ready to study! Timer is set for 25 minutes.", "success", true);
+                    playSound("sound-click");
+                    // Play rain sound if selected
+                    if ($("#ambient-sound-select").val() === "rain") {
+                        $("#ambient-rain")[0].play().catch(e => console.warn("Error playing sound:", e));
+                    }
+                });
+            } else {
+                // If checklist modal exists but not materials-yes, show workspace anyway
+                $("#workspace").removeClass("hidden").show();
+            }
+
+            $("#materials-no").click(function() {
+                console.log("Materials No button clicked");
+                // showNotification("Please gather your study materials and a water bottle.", "warning");
+                showUIMessage("Study Prep", "Please gather your study materials and a water bottle.", "warning", true);
+                playSound("sound-click");
             });
         } else {
-            console.error("Materials Yes button not found in DOM (jQuery)");
+            // If checklist modal does not exist, show workspace by default
+            $("#workspace").removeClass("hidden").show();
         }
-
-        $("#materials-no").click(function() {
-            console.log("Materials No button clicked");
-            showNotification("Please gather your study materials and a water bottle.", "warning");
-            playSound("sound-click");
-        });
 
         // Rules Modal Logic with fixed position in the middle
         $("#rules-button, #rules-button-mobile").click(function() {
-            $("#rules-modal").show();
-            $("#rules-modal").css("display", "flex");
-            $("#rules-modal").css("align-items", "center");
-            $("#rules-modal").css("justify-content", "center");
+            $("#rules-modal").show().css({"display": "flex", "align-items": "center", "justify-content": "center"});
             playSound("sound-click");
         });
 
@@ -291,25 +377,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 $("#focus-overlay").removeClass("hidden").css("display", "flex");
                 $(this).html('<i class="fas fa-eye-slash"></i>');
                 $(this).find(".tooltiptext").text("Exit Focus Mode");
-                showNotification("Focus mode enabled", "info");
+                // showNotification("Focus mode enabled", "info");
+                showUIMessage("Focus Mode", "Focus mode enabled.", "info", true);
             } else {
                 $("#focus-overlay").addClass("hidden");
                 $(this).html('<i class="fas fa-eye"></i>');
                 $(this).find(".tooltiptext").text("Enter Focus Mode");
-                showNotification("Focus mode disabled", "info");
+                // showNotification("Focus mode disabled", "info");
+                showUIMessage("Focus Mode", "Focus mode disabled.", "info", true);
             }
             
             playSound("sound-click");
         });
         
-        // Exit Focus Mode Button - completely rewritten with direct binding
-        $(document).on('click', '#exit-focus', function() {
+        // Exit Focus Mode Button (use event delegation for robustness)
+        $(document).off('click', '#exit-focus').on('click', '#exit-focus', function() {
             console.log("Exit focus mode button clicked");
             $("body").removeClass("focus-mode");
-            $("#focus-overlay").addClass("hidden").css("display", "none");
+            $("#focus-overlay").css("display", "none");
             $("#focus-mode, #focus-mode-mobile").html('<i class="fas fa-eye"></i>');
             $("#focus-mode, #focus-mode-mobile").find(".tooltiptext").text("Enter Focus Mode");
-            showNotification("Focus mode disabled", "info");
+            // showNotification("Focus mode disabled", "info");
+            showUIMessage("Focus Mode", "Focus mode disabled.", "info", true);
             playSound("sound-click");
         });
 
@@ -357,7 +446,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Error loading chat history:', error);
-                showNotification('Error loading chat history', 'error');
+                // showNotification('Error loading chat history', 'error'); // Local toast is fine here
+                showUIMessage('Chat Error', 'Error loading chat history', 'error', false);
             }
         }
 
@@ -388,7 +478,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const hasImage = fileInput && fileInput.files && fileInput.files.length > 0;
             
             if (inputVal === "" && !hasImage) {
-                showNotification("Please type a question or upload an image", "warning");
+                // showNotification("Please type a question or upload an image", "warning"); // Local toast fine
+                showUIMessage("Daphinix AI", "Please type a question or upload an image.", "warning", false);
                 return;
             }
             
@@ -431,16 +522,16 @@ document.addEventListener('DOMContentLoaded', function() {
             scrollToBottom();
             
             try {
-                // Send to appropriate API endpoint based on whether there's an image
-                if (hasImage) {
-                    const formData = new FormData();
-                    formData.append('message', inputVal);
-                    formData.append('image', fileInput.files[0]);
+            // Send to appropriate API endpoint based on whether there's an image
+            if (hasImage) {
+                const formData = new FormData();
+                formData.append('message', inputVal);
+                formData.append('image', fileInput.files[0]);
                     formData.append('memory', JSON.stringify(messages));
-                    
+                
                     const response = await fetch('/api/chat_with_image', {
-                        method: 'POST',
-                        body: formData
+                    method: 'POST',
+                    body: formData
                     });
                     const data = await response.json();
                     
@@ -452,12 +543,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     fileInput.value = '';
                     $("#image-preview-container").hide();
                     $("#image-preview").attr("src", "");
-                } else {
+            } else {
                     const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                         body: JSON.stringify({ message: inputVal, memory: messages }),
                     });
                     const data = await response.json();
@@ -467,8 +558,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     await saveChatHistory(messages);
                 }
             } catch (error) {
-                console.error('Error:', error);
-                handleDaphinixError();
+                    console.error('Error:', error);
+                    handleDaphinixError();
             }
         };
         
@@ -479,9 +570,9 @@ document.addEventListener('DOMContentLoaded', function() {
             botMessage.className = 'bot-message message';
             botMessage.innerHTML = `
                 <div class="message-header">Daphinix</div>
-                <div class="message-content">
+                    <div class="message-content">
                     <div class="message-text">${marked.parse(responseText)}</div>
-                </div>
+                        </div>
             `;
             $("#responseArea").append(botMessage);
             scrollToBottom();
@@ -514,7 +605,8 @@ document.addEventListener('DOMContentLoaded', function() {
             `);
             
             scrollToBottom();
-            showNotification("Error connecting to Daphinix", "error");
+            // showNotification("Error connecting to Daphinix", "error"); // Local toast fine
+            showUIMessage("Daphinix AI", "Error connecting to Daphinix.", "error", false);
             $("#image-preview-container").hide();
             $("#image-preview").attr("src", "");
         }
@@ -541,12 +633,14 @@ document.addEventListener('DOMContentLoaded', function() {
         $("#clear-chat").click(async function() {
             $("#responseArea").empty();
             await saveChatHistory([]);
-            showNotification("Chat history cleared", "info");
+            // showNotification("Chat history cleared", "info"); // Local toast fine
+            showUIMessage("Daphinix AI", "Chat history cleared.", "info", false);
             playSound("sound-click");
         });
 
         // Load chat history when the page loads
         $(document).ready(function() {
+            // loadUserData(); // Now called by loadUserDataAndInitNotifications
             loadChatHistory();
         });
 
@@ -569,7 +663,7 @@ document.addEventListener('DOMContentLoaded', function() {
             $("#focus-timer").text(timeString);
             
             // Update document title
-            document.title = `${timeString} - StudyBuddy`;
+            document.title = `${timeString} - FocusOS`;
         }
 
         function startTimer() {
@@ -582,9 +676,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalTime = isWorkSession ? workDuration * 60 : breakDuration * 60;
                 
                 if (timeLeft === totalTime) {
-                    showNotification(isWorkSession ? "Work session started" : "Break started", "info");
+                    // showNotification(isWorkSession ? "Work session started" : "Break started", "info");
+                    showUIMessage("Timer", isWorkSession ? "Work session started." : "Break started.", "info", true);
                 } else {
-                    showNotification("Timer resumed", "info");
+                    // showNotification("Timer resumed", "info");
+                    showUIMessage("Timer", "Timer resumed.", "info", true);
                 }
                 
                 timerInterval = setInterval(function() {
@@ -608,7 +704,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 $("#pause-timer").addClass("hidden");
                 $("#start-timer").removeClass("hidden");
                 
-                showNotification("Timer paused", "info");
+                // showNotification("Timer paused", "info");
+                showUIMessage("Timer", "Timer paused.", "info", true);
             }
         }
         
@@ -627,7 +724,8 @@ document.addEventListener('DOMContentLoaded', function() {
             $("#pause-timer").addClass("hidden");
             
             updateTimerDisplay();
-            showNotification("Timer reset", "info");
+            // showNotification("Timer reset", "info");
+            showUIMessage("Timer", "Timer reset.", "info", true);
         }
         
         function switchSession() {
@@ -650,7 +748,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (isWorkSession) {
                 // Work session completed
-                showNotification("Work session completed! Take a break.", "success");
+                // showNotification("Work session completed! Take a break.", "success");
+                showUIMessage("Timer", "Work session completed! Take a break.", "success", true);
                 
                 // Update user progress
                 const workMinutes = workDuration;
@@ -681,13 +780,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Celebration effects
                     playSound("sound-levelup");
                     createConfetti();
-                    showNotification(`Level Up! You're now level ${newLevel}`, "success", 5000);
+                    // showNotification(`Level Up! You're now level ${newLevel}`, "success", 5000);
+                    showUIMessage("Progress", `Level Up! You're now level ${newLevel}`, "success", true);
                 } else {
                     // Just update XP
                     $("#xp").text(newXP);
                     const progressPercentage = (newXP / xpForNextLevel) * 100;
                     $("#xp-progress").css("width", progressPercentage + "%");
-                    showNotification(`+${xpEarned} XP earned!`, "success");
+                    // showNotification(`+${xpEarned} XP earned!`, "success");
+                    showUIMessage("Progress", `+${xpEarned} XP earned!`, "success", true);
                 }
                 
                 // Update total time
@@ -708,7 +809,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateStreak();
             } else {
                 // Break completed
-                showNotification("Break completed! Ready for work?", "success");
+                // showNotification("Break completed! Ready for work?", "success");
+                showUIMessage("Timer", "Break completed! Ready for work?", "success", true);
             }
             
             // Switch to the other session type
@@ -765,7 +867,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Celebration and notification
                 playSound("sound-levelup");
-                showNotification(`New Badge: ${badgeEarned.name}!`, "success", 5000);
+                // showNotification(`New Badge: ${badgeEarned.name}!`, "success", 5000);
+                showUIMessage("Progress", `New Badge: ${badgeEarned.name}!`, "success", true);
                 setTimeout(createConfetti, 500);
             }
         }
@@ -814,7 +917,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (newStreak % 7 === 0) {
                     // Weekly streak milestone
-                    showNotification(`${newStreak} day streak! Keep it up!`, "success", 5000);
+                    // showNotification(`${newStreak} day streak! Keep it up!`, "success", 5000);
+                    showUIMessage("Progress", `${newStreak} day streak! Keep it up!`, "success", true);
                     setTimeout(createConfetti, 500);
                 }
                 
@@ -857,19 +961,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     </video>
                 `);
             } else if (selection === "video2") {
-                container.append(`
-                    <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
-                        <source src="/static/assets/videos/rainy_window.webm" type="video/webm">
-                        Your browser does not support the video tag.
-                    </video>
-                `);
+                // Google Drive blocks direct streaming, show a message or fallback
+                container.append('<div class="w-full h-full flex items-center justify-center text-white text-xl bg-black bg-opacity-70">Rainy Window video cannot be streamed directly. Please download and place it in /static/assets/videos/rainy_window.mp4</div>');
             } else if (selection === "video3") {
                 container.append(`
                     <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
-                        <source src="/static/assets/videos/library_ambience.webm" type="video/webm">
+                        <source src="/static/assets/videos/library_ambience.mp4" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
                 `);
+                setTimeout(function() {
+                    const vid = document.getElementById('background-video');
+                    if (vid) vid.playbackRate = 0.5;
+                }, 100);
             } else if (selection === "image1") {
                 container.append(`
                     <img id="background-image" src="/static/assets/images/starry_night.jpg" class="w-full h-full object-cover">
@@ -905,7 +1009,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             playSound("sound-click");
-            showNotification("Background updated", "info");
+            // showNotification("Background updated", "info");
+            showUIMessage("Environment", "Background updated.", "info", true);
         });
         
         // Ambient sound selection
@@ -928,9 +1033,11 @@ document.addEventListener('DOMContentLoaded', function() {
             playSound("sound-click");
             
             if (selection !== "none") {
-                showNotification(`${$(this).find("option:selected").text()} sound enabled`, "info");
+                // showNotification(`${$(this).find("option:selected").text()} sound enabled`, "info");
+                showUIMessage("Environment", `${$(this).find("option:selected").text()} sound enabled.`, "info", true);
             } else {
-                showNotification("Ambient sound disabled", "info");
+                // showNotification("Ambient sound disabled", "info");
+                showUIMessage("Environment", "Ambient sound disabled.", "info", true);
             }
         });
         
@@ -951,12 +1058,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 allAudio.prop("muted", false);
                 $(this).data("muted", false);
                 $(this).html('<i class="fas fa-volume-up"></i>');
-                showNotification("Sound enabled", "info");
+                // showNotification("Sound enabled", "info");
+                showUIMessage("Settings", "Sound enabled.", "info", true);
             } else {
                 allAudio.prop("muted", true);
                 $(this).data("muted", true);
                 $(this).html('<i class="fas fa-volume-mute"></i>');
-                showNotification("Sound disabled", "info");
+                // showNotification("Sound disabled", "info");
+                showUIMessage("Settings", "Sound disabled.", "info", true);
             }
         });
         
@@ -964,10 +1073,12 @@ document.addEventListener('DOMContentLoaded', function() {
         $("#day-night-toggle").change(function() {
             if ($(this).is(":checked")) {
                 $("body").addClass("night-mode");
-                showNotification("Night mode enabled", "info");
+                // showNotification("Night mode enabled", "info");
+                showUIMessage("Settings", "Night mode enabled.", "info", true);
             } else {
                 $("body").removeClass("night-mode");
-                showNotification("Day mode enabled", "info");
+                // showNotification("Day mode enabled", "info");
+                showUIMessage("Settings", "Day mode enabled.", "info", true);
             }
             
             playSound("sound-click");
@@ -977,10 +1088,12 @@ document.addEventListener('DOMContentLoaded', function() {
         $("#particles-toggle").change(function() {
             if ($(this).is(":checked")) {
                 $("#particles-js").show();
-                showNotification("Particles enabled", "info");
+                // showNotification("Particles enabled", "info");
+                showUIMessage("Settings", "Particles enabled.", "info", true);
             } else {
                 $("#particles-js").hide();
-                showNotification("Particles disabled", "info");
+                // showNotification("Particles disabled", "info");
+                showUIMessage("Settings", "Particles disabled.", "info", true);
             }
             
             playSound("sound-click");
@@ -990,39 +1103,51 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTimerDisplay();
         
         // Load saved user data if available
-        loadUserData();
+        // loadUserData(); // We will call this after Firebase auth
         
         // Save user data every minute
         setInterval(saveUserData, 60000);
         
-        async function loadUserData() {
+        async function loadUserDataAndInitNotifications() {
             try {
+                console.log("[Main Interface] Waiting for Firebase Auth to be ready...");
+                const firebaseUser = await window.firebaseAuthReady; // Wait for Firebase Auth
+                console.log("[Main Interface] Firebase Auth ready. Firebase User:", firebaseUser ? firebaseUser.uid : "null");
+
                 const response = await fetch('/api/user_data');
                 if (!response.ok) {
-                    throw new Error('Failed to load user data');
+                    throw new Error('Failed to load user data from API');
                 }
                 
-                const userData = await response.json();
-                if (userData) {
-                    // Update progress panel
-                    $("#level").text(userData.level || 1);
-                    $("#xp").text(userData.xp || 0);
-                    $("#xp-needed").text((userData.level || 1) * 100);
-                    $("#total-time").text(userData.total_time || 0);
-                    $("#streak").text(userData.streak || 0);
+                const userDataFromAPI = await response.json();
+                if (userDataFromAPI.error) {
+                    console.error("[Main Interface] Error fetching user data from API:", userDataFromAPI.error);
+                    // showNotification("User Data Error: Could not load your user details.", "error"); // Uses local toast
+                    showUIMessage("User Data", "Error: Could not load your user details.", "error", false); // Keep as local toast
+                    return; // Stop if API user data fails
+                }
+
+                const apiUserId = userDataFromAPI.username; // This should be Firebase UID
+                const displayUsername = userDataFromAPI.display_username || apiUserId || 'User';
+                console.log(`[Main Interface] API UserID: ${apiUserId}, Display Name: ${displayUsername}`);
+
+                // Update UI with userDataFromAPI
+                if (userDataFromAPI.progress) {
+                    $("#level").text(userDataFromAPI.progress.level || 1);
+                    $("#xp").text(userDataFromAPI.progress.xp || 0);
+                    $("#xp-needed").text((userDataFromAPI.progress.level || 1) * 100);
+                    $("#total-time").text(userDataFromAPI.progress.total_time || 0);
+                    $("#streak").text(userDataFromAPI.progress.streak || 0);
                     
-                    // Update stats panel
-                    $("#stats-total-time").text((userData.total_time || 0) + " min");
-                    $("#stats-total-sessions").text(userData.sessions || 0);
+                    $("#stats-total-time").text((userDataFromAPI.progress.total_time || 0) + " min");
+                    $("#stats-total-sessions").text(userDataFromAPI.progress.sessions || 0);
                     
-                    // Update progress bar
-                    const progressPercentage = ((userData.xp || 0) / ((userData.level || 1) * 100)) * 100;
+                    const progressPercentage = ((userDataFromAPI.progress.xp || 0) / ((userDataFromAPI.progress.level || 1) * 100)) * 100;
                     $("#xp-progress").css("width", progressPercentage + "%");
                     
-                    // Update badges
-                    $("#badges-list").empty(); // Clear existing badges
-                    if (userData.badges) {
-                        if (userData.badges.bronze) {
+                    $("#badges-list").empty();
+                    if (userDataFromAPI.progress.badges) {
+                        if (userDataFromAPI.progress.badges.bronze) {
                             $("#badges-list").append(`
                                 <div id="badge-bronze" class="badge bronze tooltip">
                                     <i class="fas fa-medal"></i>
@@ -1030,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             `);
                         }
-                        if (userData.badges.silver) {
+                        if (userDataFromAPI.progress.badges.silver) {
                             $("#badges-list").append(`
                                 <div id="badge-silver" class="badge silver tooltip">
                                     <i class="fas fa-award"></i>
@@ -1038,7 +1163,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             `);
                         }
-                        if (userData.badges.gold) {
+                        if (userDataFromAPI.progress.badges.gold) {
                             $("#badges-list").append(`
                                 <div id="badge-gold" class="badge gold tooltip">
                                     <i class="fas fa-crown"></i>
@@ -1047,14 +1172,68 @@ document.addEventListener('DOMContentLoaded', function() {
                             `);
                         }
                     }
-                    
-                    // Update total badges count
                     $("#stats-total-badges").text($("#badges-list .badge").length);
                 }
+
+
+                // Now initialize the global notification system
+                if (firebaseUser && firebaseUser.uid === apiUserId) {
+                    console.log(`[Main Interface] Firebase Auth Confirmed: UID ${firebaseUser.uid} matches API UserID ${apiUserId}. Attempting to initialize notifications...`);
+                    if (typeof initializeGlobalNotificationSystem === 'function') {
+                        initializeGlobalNotificationSystem(firebaseUser.uid); // Initialize with actual Firebase UID
+                        console.log("[Main Interface] Called initializeGlobalNotificationSystem.");
+
+                        // Add a welcome notification if it's the main page, for example
+                         console.log("[Main Interface] Checking for 'mainPageWelcomeNotificationSent' in sessionStorage. Value:", sessionStorage.getItem('mainPageWelcomeNotificationSent'));
+                         if (!sessionStorage.getItem('mainPageWelcomeNotificationSent')) {
+                             console.log("[Main Interface] 'mainPageWelcomeNotificationSent' NOT found in sessionStorage. Proceeding to add Welcome Back notification.");
+                             console.log("[Main Interface] Checking if typeof addNotification === 'function'. Is it?", typeof addNotification === 'function');
+                             if (typeof addNotification === 'function') { // This is the global addNotification from notifications.js
+                                 console.log(`[Main Interface] Attempting to call addNotification for Welcome Back. Display name: ${displayUsername}`);
+                                 addNotification('Welcome Back!', `Hello ${displayUsername}, ready for a productive session?`, 'success');
+                                 console.log("[Main Interface] addNotification for Welcome Back CALLED.");
+                             } else {
+                                 console.error("[Main Interface] addNotification function is NOT defined when trying to send Welcome Back message.");
+                             }
+                             sessionStorage.setItem('mainPageWelcomeNotificationSent', 'true');
+                             console.log("[Main Interface] 'mainPageWelcomeNotificationSent' SET in sessionStorage.");
+                         } else {
+                             console.log("[Main Interface] 'mainPageWelcomeNotificationSent' IS found in sessionStorage. Skipping Welcome Back notification.");
+                         }
+
+                    } else {
+                        console.error("[Main Interface] initializeGlobalNotificationSystem is not defined. CRITICAL: Ensure notifications.js is loaded.");
+                        // showNotification("Notification System Error", "error"); // Uses local toast
+                        showUIMessage("System Error", "Notification system error.", "error", false); // Keep as local toast
+                    }
+                } else {
+                     if (!firebaseUser) {
+                        console.warn(`[Main Interface] Firebase user is NULL when trying to set up for API UserID: ${apiUserId}. Global notifications likely disabled.`);
+                        // showNotification("Client not signed into Firebase. Global notifications may not work.", "error"); // Uses local toast
+                        showUIMessage("Auth Error", "Client not signed into Firebase. Global notifications may not work.", "error", false); // Keep as local toast
+                    } else { // firebaseUser.uid !== apiUserId
+                        console.error(`[Main Interface] CRITICAL UID MISMATCH on main page: API UserID is ${apiUserId}, but Firebase Auth UID is ${firebaseUser.uid}. Global notifications disabled.`);
+                        // showNotification("User identity mismatch. Please re-login. Global notifications disabled.", "error"); // Uses local toast
+                        showUIMessage("Auth Error", "User identity mismatch. Please re-login. Global notifications disabled.", "error", false); // Keep as local toast
+                    }
+                }
+
             } catch (error) {
-                console.error("Error loading user data:", error);
-                showNotification("Error loading progress data", "error");
+                console.error("[Main Interface] Error in loadUserDataAndInitNotifications:", error);
+                // showNotification("Error loading user data or initializing notifications.", "error"); // Uses local toast
+                showUIMessage("System Error", "Error loading user data or initializing notifications.", "error", false); // Keep as local toast
             }
+        }
+        
+        // Call the new function that handles both user data loading and notification init
+        loadUserDataAndInitNotifications();
+        
+        async function loadUserData() {
+            // This function is now effectively replaced by loadUserDataAndInitNotifications
+            // but we keep a shell or parts of it if other parts of the script call it directly,
+            // or refactor those calls. For now, let's assume loadUserDataAndInitNotifications is the primary.
+            // The UI update part is now inside loadUserDataAndInitNotifications.
+            console.warn("[Main Interface] loadUserData() was called, but logic is now in loadUserDataAndInitNotifications().");
         }
         
         async function saveUserData() {
@@ -1160,7 +1339,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Error loading todo list:', error);
-                showNotification('Error loading tasks. Please refresh the page.', 'error');
+                // showNotification('Error loading tasks. Please refresh the page.', 'error'); // Local toast
+                showUIMessage('To-Do Error', 'Error loading tasks. Please refresh.', 'error', false);
             }
         }
 
@@ -1190,11 +1370,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     const response = await fetch('/api/todo_list');
                     const todos = await response.json();
                     
-                    // Add new task
+                    // Add new task with UTC timestamps
                     const task = {
                         name,
-                        startDate,
-                        dueDate,
+                        startDate: new Date(startDate).toISOString(),
+                        dueDate: new Date(dueDate).toISOString(),
                         status,
                         priority,
                         effort,
@@ -1218,13 +1398,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         await loadTodoList();
                         $('#todo-modal').addClass('hidden').hide();
                         $('#todo-form')[0].reset();
-                        showNotification('Task added!', 'success');
+                        // showNotification('Task added!', 'success');
+                        showUIMessage('To-Do', 'Task added!', 'success', true);
                     } else {
                         throw new Error('Failed to save task');
                     }
-                } catch (error) {
+            } catch (error) {
                     console.error('Error:', error);
-                    showNotification('Error adding task. Please try again.', 'error');
+                    // showNotification('Error adding task. Please try again.', 'error'); // Local toast
+                    showUIMessage('To-Do Error', 'Error adding task. Please try again.', 'error', false);
                 }
             }
         });
@@ -1259,13 +1441,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (saveResponse.ok) {
                     await loadTodoList();
-                    showNotification('Task status updated!', 'success');
+                    // showNotification('Task status updated!', 'success');
+                    showUIMessage('To-Do', 'Task status updated!', 'success', true);
                 } else {
                     throw new Error('Failed to update task status');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showNotification('Error updating task status. Please try again.', 'error');
+                // showNotification('Error updating task status. Please try again.', 'error'); // Local toast
+                showUIMessage('To-Do Error', 'Error updating task status. Please try again.', 'error', false);
             }
         });
 
@@ -1292,13 +1476,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (saveResponse.ok) {
                     await loadTodoList(); // Reload the todo list
-                    showNotification('Task deleted!', 'info');
+                    // showNotification('Task deleted!', 'info');
+                    showUIMessage('To-Do', 'Task deleted!', 'info', true);
                 } else {
                     throw new Error('Failed to delete task');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showNotification('Error deleting task. Please try again.', 'error');
+                // showNotification('Error deleting task. Please try again.', 'error'); // Local toast
+                showUIMessage('To-Do Error', 'Error deleting task. Please try again.', 'error', false);
             }
         });
 
@@ -1313,8 +1499,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         const due = new Date(task.dueDate);
                         if (now >= due && !task.reminded) {
                             // Play notification sound
-                            playSound('sound-complete');
-                            showNotification(`Task due: ${task.name}`, 'warning', 7000);
+                            playSound('sound-complete'); // This is a local sound, addNotification will play its own
+                            // showNotification(`Task due: ${task.name}`, 'warning', 7000);
+                            showUIMessage('To-Do Reminder', `Task due: ${task.name}`, 'warning', true);
                             // Mark as reminded
                             task.reminded = true;
                         }
@@ -1326,12 +1513,60 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Load data when the page loads
         $(document).ready(function() {
-            loadUserData();
+            // loadUserData(); // Now called by loadUserDataAndInitNotifications
             loadTodoList();
             loadChatHistory();
         });
 
         // Save user data periodically
         setInterval(saveUserData, 30000); // Save every 30 seconds
+
+        // Initialize notification system
+            const bell = document.getElementById('notification-bell');
+            const panel = document.getElementById('notification-panel');
+            
+            if (bell && panel) {
+                bell.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent click from bubbling to document
+                    panel.classList.toggle('hidden');
+                    if (!panel.classList.contains('hidden')) {
+                        // markAllAsRead(); // OLD: Was local script.js notifications
+                        if (typeof markAllCurrentUserNotificationsAsRead === 'function') {
+                            markAllCurrentUserNotificationsAsRead();
+                            console.log("[Main Interface] Called global markAllCurrentUserNotificationsAsRead.");
+                        } else {
+                            console.error("[Main Interface] markAllCurrentUserNotificationsAsRead is not defined.");
+                        }
+                    }
+                });
+                
+            // Clear notifications button specific to this panel
+                const clearBtn = document.getElementById('clear-notifications');
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent click from bubbling to document
+                    // clearNotifications(); // OLD: Was local script.js notifications
+                    if (typeof clearAllCurrentUserNotifications === 'function') {
+                        clearAllCurrentUserNotifications();
+                        console.log("[Main Interface] Called global clearAllCurrentUserNotifications.");
+                    } else {
+                        console.error("[Main Interface] clearAllCurrentUserNotifications is not defined.");
+                    }
+                    });
+                }
+            }
+            
+        // Global click listener to close notification panel if open and click is outside
+        document.addEventListener('click', function(e) {
+            if (panel && !panel.classList.contains('hidden')) { // If panel is open
+                // Check if the click was outside the panel AND outside the bell
+                if (!panel.contains(e.target) && !bell.contains(e.target)) {
+                    panel.classList.add('hidden');
+                }
+            }
+        });
+        
+        // Add welcome notification using the local showNotification
+            // showNotification('Welcome!', 'Welcome to FocusOS. Start your productive journey!', 'info'); // This is a local toast, can be kept or removed
     }
 });

@@ -3,21 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}StudyBuddy{% endblock %}</title>
+    <title>{% block title %}FocusOS{% endblock %}</title>
     <link href="/static/lib/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="/static/css/auth.css">
     <link rel="stylesheet" href="/static/css/particles.css">
     {% block extra_css %}{% endblock %}
+
+    <script src="/static/lib/jquery-3.6.0.min.js"></script>
+
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <!-- Add Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <!-- Add Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <script>
+        console.log("[Base.html:Head] Main script block started.");
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmmO-UoUZo4fWvTTIzWORweszVLD3HPe0",
+            authDomain: "studybuddy-4d84c.firebaseapp.com",
+            projectId: "studybuddy-4d84c",
+            storageBucket: "studybuddy-4d84c.firebasestorage.app",
+            messagingSenderId: "912454151146",
+            appId: "1:912454151146:web:556ffcf35a227107476093",
+            measurementId: "G-XVLZYJWMPN"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+            console.log("[Base.html:Head] Firebase initialized.");
+        } else {
+            console.log("[Base.html:Head] Firebase already initialized.");
+        }
+
+        // Promise for Firebase Auth readiness
+        window.firebaseAuthReady = new Promise((resolve) => {
+            // Ensure the token is treated as a string literal in JS.
+            // If firebase_custom_token_for_client is None/null from Flask, it becomes an empty string here,
+            // which is fine as the if (firebaseCustomToken) check will handle it.
+            const firebaseCustomToken = "{{ firebase_custom_token_for_client or '' }}";
+            const expectedUidOnSignIn = "{{ session_user_id_for_debug or 'NOT_SET' }}";
+            
+            console.log(`[Base.html:Head] IMMEDIATELY AFTER DEFINITION - firebaseCustomToken: '${firebaseCustomToken}' (length: ${firebaseCustomToken.length})`);
+            console.log(`[Base.html:Head] IMMEDIATELY AFTER DEFINITION - expectedUidOnSignIn: '${expectedUidOnSignIn}'`);
+
+            if (firebaseCustomToken && firebaseCustomToken !== "None" && firebaseCustomToken !== "null" && firebaseCustomToken.trim() !== "") {
+                console.log(`[Base.html:Head] Attempting signInWithCustomToken with token (first 30 chars): ${firebaseCustomToken.substring(0,30)}...`);
+                firebase.auth().signInWithCustomToken(firebaseCustomToken)
+                    .then((userCredential) => {
+                        console.log(`[Base.html:Head] Custom token sign-in SUCCESS. Firebase User UID: ${userCredential.user.uid}`);
+                        if (expectedUidOnSignIn && expectedUidOnSignIn !== 'NOT_SET' && userCredential.user.uid !== expectedUidOnSignIn) {
+                            console.warn(`[Base.html:Head] UID MISMATCH after custom token sign-in! Expected ${expectedUidOnSignIn}, got ${userCredential.user.uid}.`);
+                        }
+                        console.log("[Base.html:Head] Resolving firebaseAuthReady with user:", userCredential.user);
+                        resolve(userCredential.user);
+                    })
+                    .catch((error) => {
+                        console.error(`[Base.html:Head] Custom token sign-in FAILED:`, error);
+                        console.error(`[Base.html:Head] Token used for failed sign-in attempt: "${firebaseCustomToken}"`);
+                        console.log("[Base.html:Head] Resolving firebaseAuthReady with NULL due to sign-in error.");
+                        resolve(null); 
+                    });
+            } else {
+                console.log("[Base.html:Head] No valid custom token found. Setting up onAuthStateChanged for initial state.");
+                const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+                    unsubscribe(); 
+                    console.log(`[Base.html:Head] Initial onAuthStateChanged. Firebase User:`, user ? user.uid : "null");
+                    console.log("[Base.html:Head] Resolving firebaseAuthReady from onAuthStateChanged with user:", user);
+                    resolve(user);
+                });
+            }
+        });
+    </script>
+    <script src="/static/js/notifications.js"></script>
 </head>
 <body>
     <div id="particles-js" class="particles"></div>
-    
     {% block content %}{% endblock %}
-    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script src="/static/js/particles.js"></script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html> 

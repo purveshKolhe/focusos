@@ -1,4 +1,4 @@
-# StudyBuddy
+# FocusOS
 
 A gamified study platform with AI-powered assistance.
 
