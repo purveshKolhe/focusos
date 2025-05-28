@@ -2,7 +2,8 @@ body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
     min-height: 100vh;
-    color: white;
+    color: #f0f0f0;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
 }
 
 #background-container {
@@ -38,13 +39,13 @@ body {
 
 /* Logo styling to match the provided sample */
 .logo-text {
-    font-family: 'Poppins', sans-serif;
+    font-family: "Almendra", serif;
     font-weight: 700;
     font-size: 1.8rem;
-    background: linear-gradient(90deg, #9333EA, #D946EF);
+    background: linear-gradient(90deg, #ff8a00, #e52e71);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0px 0px 10px rgba(217, 70, 239, 0.5);
+    text-shadow: 0px 0px 15px rgba(229, 46, 113, 0.5);
     letter-spacing: 0.5px;
 }
 
@@ -54,8 +55,9 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 1rem 0;
+    padding: 0.5rem 0;
+    margin: 0;
+    overflow: hidden;
 }
 
 .container-with-sidebar {
@@ -69,13 +71,15 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem;
-    background-color: transparent;
-    color: white;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #f0f0f0;
     transition: all 0.3s ease;
     border-radius: 0;
     width: 100%;
     border-left: 2px solid transparent;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .nav-tab i {
@@ -84,7 +88,7 @@ body {
 }
 
 .nav-tab:hover {
-    background-color: rgba(147, 51, 234, 0.2);
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .nav-tab.active {
@@ -100,7 +104,7 @@ body {
 /* Content Panels */
 .content-panel {
     display: none;
-    padding: 1rem;
+    padding: 0.5rem;
     opacity: 0;
     transition: opacity 0.5s ease;
     min-height: calc(100vh - 160px);
@@ -118,8 +122,8 @@ body {
     width: 260px;
     height: 260px;
     border-radius: 50%;
-    background: rgba(40, 0, 60, 0.7);
-    box-shadow: 0 0 40px 10px #9333EA55, 0 0 0 8px #D946EF22 inset;
+    background: rgba(157, 0, 255, 0.324);
+    box-shadow: 0 0 40px 10px #ae00ff78, 0 0 0 8px #f778f560 inset;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -131,8 +135,8 @@ body {
 }
 
 @keyframes timerPulse {
-    0% { box-shadow: 0 0 40px 10px #9333EA55, 0 0 0 8px #D946EF22 inset; }
-    100% { box-shadow: 0 0 60px 20px #D946EF99, 0 0 0 12px #9333EA44 inset; }
+    0% { box-shadow: 0 0 40px 10px #7300ff8e, 0 0 0 8px #8447ff inset; }
+    100% { box-shadow: 0 0 60px 20px #d02ee5, 0 0 0 12px hsl(324, 91%, 77%) inset; }
 }
 
 .timer-text {
@@ -141,19 +145,19 @@ body {
     color: #fff;
     font-family: 'Poppins', monospace;
     letter-spacing: 2px;
-    text-shadow: 0 0 10px #D946EF, 0 0 20px #9333EA;
+    text-shadow: 0 0 20px #e52e71, 0 0 40px #ff8a00;
     margin-bottom: 0.5rem;
     animation: timerTextGlow 1.5s infinite alternate;
 }
 
 @keyframes timerTextGlow {
-    0% { text-shadow: 0 0 10px #D946EF, 0 0 20px #9333EA; }
-    100% { text-shadow: 0 0 20px #D946EF, 0 0 40px #9333EA; }
+    0% { text-shadow: 0 0 20px #e52e71, 0 0 40px #ff8a00; }
+    100% { text-shadow: 0 0 40px #e52e71, 0 0 80px #ff8a00; }
 }
 
 .session-label {
     font-size: 1.1rem;
-    color: #a78bfa;
+    color: #dbd1b65d;
     font-weight: 600;
     margin-top: 0.5rem;
     letter-spacing: 1px;
@@ -213,9 +217,9 @@ body {
 .settings-select {
     width: 100%;
     padding: 0.75rem;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(255, 255, 255, 0.1);
     color: white;
-    border: 1px solid #9333EA;
+    border: 1px solid #e52e71;
     border-radius: 4px;
     margin-bottom: 1rem;
 }
@@ -275,6 +279,37 @@ body {
 }
 
 .tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Inline Tooltip Style for Badges in Rules Modal */
+.tooltip_inline {
+    position: relative;
+    display: inline-block; /* Important for proper positioning */
+}
+
+.tooltip_inline .tooltiptext_inline_content { /* Using a more specific class for the tooltip content */
+    visibility: hidden;
+    width: 120px; /* Adjust as needed */
+    background-color: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 5px; /* More padding for better look */
+    position: absolute;
+    z-index: 10; /* Ensure it's above other modal content */
+    bottom: 130%; /* Position above the icon */
+    left: 50%;
+    margin-left: -60px; /* Use half of the width to center */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out; /* Smoother transition */
+    font-size: 0.7rem; /* Slightly smaller font */
+    white-space: normal; /* Allow text to wrap */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Optional shadow */
+}
+
+.tooltip_inline:hover .tooltiptext_inline_content {
     visibility: visible;
     opacity: 1;
 }
@@ -444,8 +479,8 @@ input:checked + .slider:before {
 /* Mobile Responsiveness */
 @media (max-width: 640px) {
     .timer-circle {
-        width: 200px;
-        height: 200px;
+        width: 300px;
+        height: 300px;
     }
     
     .timer-text {
@@ -459,6 +494,11 @@ input:checked + .slider:before {
     .container-with-sidebar {
         margin-left: 60px;
         width: calc(100% - 60px);
+    }
+
+    .nav-tab.active .tab-text,
+    .nav-tab .tab-text {
+        display: none;
     }
 }
 
@@ -534,78 +574,134 @@ input:checked + .slider:before {
     box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.25);
 }
 
-/* Chat Message Styling */
+/* Chat Message Styling - Revised for unified look */
 .message {
-    margin-bottom: 16px;
-    max-width: 80%;
+    display: flex;
+    align-items: flex-end; /* Align avatar and bubble nicely */
+    margin-bottom: 12px;
+    max-width: 85%; /* Allow messages to be a bit wider */
+}
+
+.message-avatar-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+
+.user-message .message-avatar-placeholder {
+    /* background-color: #7C3AED; /* Purple for user avatar bg */
+    /* color: white; */
+    /* Example: User icon */
+}
+
+.bot-message .message-avatar-placeholder {
+    /* background-color: #4A5568; /* Gray for bot avatar bg */
+    /* color: white; */
+    /* Example: Bot icon */
+}
+
+.message-bubble-wrapper { /* New wrapper for bubble and header */
+    display: flex;
+    flex-direction: column;
+    max-width: calc(100% - 48px); /* Account for avatar + margin */
+}
+
+/* This will now act as the bubble */
+.message-content {
+    padding: 10px 15px;
+    border-radius: 18px; /* More rounded like typical chat bubbles */
+    line-height: 1.5;
+    /* Removed position: relative; as it might not be needed with new structure */
 }
 
 .user-message {
-    margin-left: auto;
+    margin-left: auto; /* Keep overall alignment to the right */
+    flex-direction: row-reverse; /* Avatar on the right of text */
 }
 
-.bot-message {
-    margin-right: auto;
+.user-message .message-avatar-placeholder {
+    margin-left: 8px; /* Margin between avatar and bubble */
+    background-color: rgba(147, 51, 234, 0.4); /* User avatar bg */
 }
 
-.message-content {
-    padding: 10px 14px;
-    border-radius: 10px;
-    position: relative;
+.user-message .message-bubble-wrapper {
+    align-items: flex-end; /* Align header/content to the right within the wrapper */
 }
 
 .user-message .message-content {
-    background-color: rgba(147, 51, 234, 0.3);
-    border: 1px solid rgba(147, 51, 234, 0.5);
+    background-color: #7C3AED; /* Purple for user bubble */
+    color: white;
+    border-bottom-right-radius: 5px; /* Characteristic chat tail */
+}
+
+.bot-message {
+    margin-right: auto; /* Keep overall alignment to the left */
+    flex-direction: row; /* Avatar on the left of text */
+}
+
+.bot-message .message-avatar-placeholder {
+    margin-right: 8px; /* Margin between avatar and bubble */
+    background-color: rgba(74, 85, 104, 0.5); /* Bot avatar bg */
+}
+
+.bot-message .message-bubble-wrapper {
+    align-items: flex-start; /* Align header/content to the left */
 }
 
 .bot-message .message-content {
-    background-color: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: #374151; /* Dark gray for bot bubble */
+    color: #f0f4f8;
+    border-bottom-left-radius: 5px; /* Characteristic chat tail */
 }
 
+/* Message Header (Sender Name) - to be placed inside bubble-wrapper, above content */
 .message-header {
-    font-size: 12px;
+    font-size: 0.75rem; /* Smaller */
     font-weight: 600;
     margin-bottom: 4px;
+    color: #a0aec0; /* Muted color for sender name/timestamp */
 }
 
 .user-message .message-header {
-    color: #D946EF;
+    /* color: #D946EF; /* Original user sender color, can be removed if bubble color is enough */
+    margin-right: 5px; /* Adjust for alignment within bubble */
+    text-align: right;
 }
 
 .bot-message .message-header {
-    color: #A78BFA;
+    /* color: #A78BFA; /* Original bot sender color */
+    margin-left: 5px; /* Adjust for alignment */
+    text-align: left;
 }
 
 .message-text {
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 0.9rem; /* Standardized text size */
+    /* Other styles like p, ul, ol margins should be fine */
 }
 
-.message-text p {
+/* Ensure images in messages are constrained and styled well within the new bubble */
+.message-text img {
+    display: block;
+    max-width: 100%;
+    border-radius: 10px; /* Rounded images within bubble */
     margin-top: 8px;
-    margin-bottom: 8px;
+    /* box-shadow: none; /* Remove outer shadow if bubble provides enough definition */
 }
 
-.message-text ul, .message-text ol {
-    margin-top: 8px;
-    margin-bottom: 8px;
-    padding-left: 20px;
-}
-
-.message-text li {
-    margin-bottom: 4px;
-}
-
-/* Typing indicator animation */
+/* Typing indicator can remain similar, but ensure it fits the new structure if needed */
 .typing-indicator {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    height: 24px;
+    /* padding: 10px 0; /* Adjusted padding if it lives directly in bubble */
 }
 
+/* Typing indicator animation */
 .typing-indicator span {
     height: 8px;
     width: 8px;
@@ -670,20 +766,6 @@ input:checked + .slider:before {
 
 #send-button:hover {
     background-color: #7E22CE;
-}
-
-/* Additional styling for images in Daphinix responses */
-.message-text img {
-    display: block;
-    max-width: 100%;
-    border-radius: 6px;
-    margin: 10px auto;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s ease;
-}
-
-.message-text img:hover {
-    transform: scale(1.05);
 }
 
 /* Style markdown headings in Daphinix chat */
@@ -908,3 +990,404 @@ input:checked + .slider:before {
         transform: translateY(0) scale(1);
     }
 } */
+
+@media (min-width: 768px) {
+    .logo-text {
+        font-size: 2.5rem;
+    }
+}
+
+select {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    color: white !important;
+    border: 1px solid #4B5563 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile specific adjustments for Daphinix panel */
+@media (max-width: 640px) { /* sm breakpoint */
+    .container-with-sidebar {
+        padding-left: 5px; /* Further reduce side padding if not already done */
+        padding-right: 5px;
+    }
+
+    #daphinix-panel .bg-black { /* Target the inner div with background */
+        /* width: 95vw; */ /* Let w-full and parent padding handle it */
+        margin-left: auto;
+        margin-right: auto;
+        padding: 1rem; /* Reduce padding inside the panel on mobile */
+        height: 70vh; /* Adjust height for mobile */
+        max-height: calc(100vh - 100px);
+    }
+
+    #daphinix-panel .daphinix-response-area {
+        min-height: 200px; /* Adjust min height for shorter panel */
+        max-height: none; /* Allow it to be constrained by parent */
+    }
+
+    #daphinix-panel .daphinix-input-container textarea {
+        font-size: 0.9rem; /* Slightly smaller font for input on mobile */
+    }
+
+    #daphinix-panel .daphinix-input-container .relative.flex.items-center {
+        flex-direction: column; /* Stack textarea and button vertically */
+        align-items: stretch; /* Make children take full width */
+    }
+
+    #daphinix-panel .daphinix-input-container textarea#myInput {
+        width: 100%;
+        margin-bottom: 0.5rem; /* Space between textarea and button */
+        margin-right: 0; /* Remove right margin if any from desktop */
+    }
+
+    #daphinix-panel .daphinix-input-container #send-button {
+        position: static; /* Override absolute positioning from desktop */
+        width: 100%; /* Make button full width */
+        margin-top: 0.25rem; /* Small space above button */
+        padding: 0.75rem; /* Make button a bit larger for touch */
+        border-radius: 0.375rem; /* Standard button rounding */
+    }
+
+    #daphinix-panel .daphinix-input-container #upload-image-btn {
+        margin-bottom: 0.5rem; /* Space below upload button if it's also stacked */
+        align-self: flex-start; /* Align to left if container is stretched */
+    }
+
+    /* Adjust the container for the input and buttons if necessary */
+    #daphinix-panel .daphinix-input-container {
+        /* padding-bottom: 0.5rem; /* Add some padding if button is close to bottom edge */
+    }
+}
+
+/* Styles for Badges in the Gamification Guide */
+.guide-badge-card {
+    background-color: rgba(255, 255, 255, 0.05); /* Slightly transparent card */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%; /* Ensure cards in a row have same height */
+}
+
+.guide-badge-card .badge-icon-container {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    font-size: 1.75rem; /* Larger icon */
+    position: relative; /* For earned overlay */
+}
+
+.guide-badge-card .badge-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #e5e7eb; /* Light gray for name */
+    margin-bottom: 0.25rem;
+}
+
+.guide-badge-card .badge-description {
+    font-size: 0.75rem;
+    color: #d1d5db; /* Medium gray for description */
+    margin-bottom: 0.5rem;
+    flex-grow: 1; /* Allow description to take space */
+}
+
+.guide-badge-card .badge-criteria {
+    font-size: 0.7rem;
+    color: #9ca3af; /* Darker gray for criteria */
+    font-style: italic;
+}
+
+/* Unearned Badge Styling */
+.guide-badge-card.unearned .badge-icon-container {
+    filter: grayscale(100%);
+    opacity: 0.6;
+}
+.guide-badge-card.unearned .badge-icon-container i {
+    color: #9ca3af !important; /* Override specific badge colors for unearned */
+}
+
+.guide-badge-card.unearned .badge-name,
+.guide-badge-card.unearned .badge-description,
+.guide-badge-card.unearned .badge-criteria {
+    color: #6b7280; /* Darker, muted text for unearned */
+}
+
+/* Overlay for Earned Badges */
+.guide-badge-card.earned .badge-icon-container::after {
+    content: "\f058"; /* Font Awesome check-circle solid */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    font-size: 1rem;
+    color: #10B981; /* Green check */
+    background-color: #1f2937; /* Match card background to make circle effect */
+    border-radius: 50%;
+    padding: 2px;
+    line-height: 1;
+}
+
+/* Styles for Quest Types in the Gamification Guide */
+.guide-quest-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.guide-quest-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.guide-quest-card .quest-title {
+    font-weight: 600;
+    color: #c4b5fd; /* Light purple */
+    margin-bottom: 0.25rem;
+}
+
+.guide-quest-card .quest-description-template {
+    font-size: 0.85rem;
+    color: #d1d5db;
+    margin-bottom: 0.5rem;
+}
+
+.guide-quest-card .quest-details {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* Vertical Navigation Bar Styling for Scrollability */
+.vertical-nav {
+    overflow: hidden;
+}
+
+.nav-tabs-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* Inner container for tabs, ensure it can grow */
+.nav-tabs-wrapper > .flex.flex-col {
+    min-height: min-content;
+}
+
+/* Webkit Scrollbar Styling for nav-tabs-wrapper */
+.nav-tabs-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox Scrollbar Styling (less direct control, but can set color and width) */
+.nav-tabs-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Enhanced To-Do List Styles */
+
+/* To-Do Panel Container */
+#todo-panel .bg-black {
+    /* max-w-5xl is good, padding can be adjusted if needed */
+}
+
+#todo-panel h2 {
+    /* Existing styles are likely fine, text-purple-300 is good */
+}
+
+/* Add Task Button */
+#open-todo-modal {
+    /* bg-purple-600 hover:bg-purple-700 is good, ensure consistency */
+    padding: 0.6rem 1.2rem; /* Slightly more padding */
+    font-weight: 500;
+}
+
+/* To-Do Table Styling */
+#todo-panel table {
+    border-collapse: separate; /* Allows for border-radius on cells if needed, and spacing */
+    border-spacing: 0; /* Reset default spacing if using separate */
+    width: 100%;
+    border-radius: 0.75rem; /* Rounded corners for the table itself */
+    overflow: hidden; /* Important for border-radius to take effect on child elements */
+}
+
+#todo-panel th,
+#todo-panel td {
+    padding: 0.85rem 1.1rem; /* Increased padding for better spacing */
+    text-align: left;
+    border-bottom: 1px solid rgba(147, 51, 234, 0.2); /* Subtle purple border */
+    font-size: 0.875rem; /* Slightly smaller font for table data */
+}
+
+#todo-panel th {
+    background-color: rgba(147, 51, 234, 0.15); /* Light purple header */
+    color: #e5e7eb; /* Light gray text for headers */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+#todo-panel tr:last-child td {
+    border-bottom: none; /* Remove border from last row */
+}
+
+#todo-panel tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03); /* Very subtle hover */
+}
+
+#todo-panel .todo-status {
+    /* background-color: #1f2937; /* Darker background for select */
+    /* border: 1px solid #4b5563; /* Darker border */
+    /* color: white; */
+    /* padding: 0.3rem 0.6rem; */
+    /* border-radius: 0.375rem; */
+    font-size: 0.8rem;
+    min-width: 120px; /* Give status dropdown some width */
+}
+
+#todo-panel .delete-todo i {
+    transition: color 0.2s ease-in-out;
+}
+#todo-panel .delete-todo:hover i {
+    color: #ef4444; /* Brighter red on hover for the icon itself */
+}
+
+/* "No tasks found" message */
+#todo-table-body tr td[colspan="8"] {
+    color: #9ca3af; /* Muted color */
+    padding: 2rem;
+}
+
+/* Add/Edit Task Modal Styling */
+#todo-modal .bg-gray-900 {
+    border-width: 1px;
+    border-color: rgba(147, 51, 234, 0.5); /* Purple border consistent with other modals */
+    box-shadow: 0 0 30px rgba(147, 51, 234, 0.2); /* Glow effect */
+}
+
+#todo-modal h3 {
+    font-size: 1.35rem; /* Slightly larger modal title */
+}
+
+#todo-modal label {
+    font-size: 0.8rem;
+    color: #d1d5db; /* Lighter label text */
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+#todo-modal input[type="text"],
+#todo-modal input[type="datetime-local"],
+#todo-modal select,
+#todo-modal textarea {
+    background-color: rgba(0,0,0,0.3);
+    border: 1px solid rgba(147, 51, 234, 0.4);
+    color: white;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#todo-modal input[type="text"]:focus,
+#todo-modal input[type="datetime-local"]:focus,
+#todo-modal select:focus,
+#todo-modal textarea:focus {
+    outline: none;
+    border-color: rgba(147, 51, 234, 0.7);
+    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+#todo-modal textarea {
+    min-height: 60px;
+}
+
+#todo-modal .flex.justify-end button {
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+}
+
+/* Ensure select dropdown arrows are visible on dark backgrounds if needed */
+#todo-modal select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.5rem; /* Make space for the arrow */
+}
+
+/* Responsive Leaderboard Table */
+@media (max-width: 640px) { /* sm breakpoint or your preferred mobile breakpoint */
+    #leaderboard-panel .overflow-hidden.shadow-lg {
+        overflow-x: auto; /* Enable horizontal scrolling for the table container */
+    }
+
+    #leaderboard-panel table {
+        /* min-width might not be strictly needed if parent scrolls,
+           but can ensure table doesn't try to shrink too aggressively */
+        /* min-width: 600px; /* Adjust as needed based on content */
+    }
+
+    /* Optional: Slightly reduce padding on table cells for mobile to save space */
+    #leaderboard-panel th,
+    #leaderboard-panel td {
+        padding: 0.6rem 0.5rem; /* Reduced padding */
+        font-size: 0.75rem; /* Slightly smaller font on mobile */
+        white-space: nowrap; /* Prevent text wrapping in cells that might cause vertical stretch */
+    }
+
+    #leaderboard-panel .leaderboard-filter-btn {
+        padding: 0.5rem 0.75rem; /* Adjust button padding */
+        font-size: 0.8rem;
+    }
+
+    #leaderboard-panel .text-3xl {
+        font-size: 1.75rem; /* Reduce title size */
+    }
+}
+
+/* Hide Avatars specifically for Daphinix Chat panel */
+#daphinix-panel .message-avatar-placeholder {
+    display: none;
+}
+
+#daphinix-panel .message-bubble-wrapper {
+    max-width: 100%; /* Allow bubble to take full width since avatar is hidden */
+}

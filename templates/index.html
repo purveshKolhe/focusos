@@ -45,42 +45,50 @@
 
     <!-- Rules Modal -->
     <div id="rules-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden px-4">
-        <div class="modal-content bg-gray-900 bg-opacity-90 p-6 sm:p-8 rounded-lg shadow-glow max-w-md w-full text-white backdrop-blur-md border border-blue-500">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4 text-center text-blue-300">XP & Badge Rules</h2>
-            <div class="space-y-4">
-                <h3 class="text-lg font-bold text-blue-300">XP Rules</h3>
-                <ul class="list-disc list-inside">
-                    <li>Earn 10 XP per minute of work session.</li>
-                    <li>Level up when XP reaches your current level × 100.</li>
-                    <li>Excess XP carries over to the next level.</li>
-                </ul>
-                <h3 class="text-lg font-bold text-blue-300">Badge Rules</h3>
-                <div class="grid grid-cols-3 gap-4 mt-2">
-                    <div class="flex flex-col items-center">
-                        <div class="badge bronze tooltip">
-                            <i class="fas fa-medal"></i>
-                            <span class="tooltiptext">Study for 60 minutes</span>
-                        </div>
-                        <span class="text-xs mt-1">Beginner</span>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <div class="badge silver tooltip">
-                            <i class="fas fa-award"></i>
-                            <span class="tooltiptext">Study for 300 minutes</span>
-                        </div>
-                        <span class="text-xs mt-1">Scholar</span>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <div class="badge gold tooltip">
-                            <i class="fas fa-crown"></i>
-                            <span class="tooltiptext">Study for 1000 minutes</span>
-                        </div>
-                        <span class="text-xs mt-1">Master</span>
-                    </div>
+        <div class="modal-content bg-gray-900 bg-opacity-90 p-6 sm:p-8 rounded-lg shadow-glow max-w-lg w-full text-white backdrop-blur-md border border-blue-500 flex flex-col max-h-[85vh]" style="display: flex; flex-direction: column; max-width: 32rem; width: 100%; max-height: 85vh;">
+            <h2 class="text-xl sm:text-2xl font-bold mb-6 text-center text-blue-300">FocusOS Game Rules</h2>
+            
+            <div class="space-y-4 overflow-y-auto pr-2 flex-grow" style="flex-grow: 1; overflow-y: auto;">
+
+                <div class="p-3 bg-gray-800 bg-opacity-70 rounded-lg">
+                    <h3 class="text-md font-semibold text-blue-300 mb-1 flex items-center"><i class="fas fa-star fa-fw mr-2 text-yellow-400"></i>XP & Levels</h3>
+                    <p class="text-sm text-gray-300">Earn XP for focus time (e.g., 1 XP/min). More XP = Higher Levels! Track in "Progress".</p>
                 </div>
-                <div class="flex justify-center mt-4">
-                    <button id="close-rules" class="btn-primary"><i class="fas fa-times mr-2"></i>Close</button>
+
+                <div class="p-3 bg-gray-800 bg-opacity-70 rounded-lg">
+                    <h3 class="text-md font-semibold text-blue-300 mb-1 flex items-center"><i class="fas fa-trophy fa-fw mr-2 text-amber-500"></i>Badges</h3>
+                    <p class="text-sm text-gray-300">Unlock cool badges for achievements!</p>
+                    <div class="mt-2 flex space-x-3 justify-center">
+                        <span class="tooltip_inline">
+                            <i class="fas fa-medal fa-2x text-orange-400"></i>
+                            <span class="tooltiptext_inline_content">Time Master: Study a lot!</span>
+                        </span>
+                        <span class="tooltip_inline">
+                            <i class="fas fa-moon fa-2x text-indigo-400"></i>
+                            <span class="tooltiptext_inline_content">Night Owl: Focus late!</span>
+                        </span>
+                        <span class="tooltip_inline">
+                            <i class="fas fa-fire-alt fa-2x text-red-500"></i>
+                            <span class="tooltiptext_inline_content">Streak Pro: Consistent effort!</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 text-center">See all your badges in "Progress".</p>
                 </div>
+
+                <div class="p-3 bg-gray-800 bg-opacity-70 rounded-lg">
+                    <h3 class="text-md font-semibold text-blue-300 mb-1 flex items-center"><i class="fas fa-map-signs fa-fw mr-2 text-green-400"></i>Quests</h3>
+                    <p class="text-sm text-gray-300">Complete Daily & Weekly Quests for bonus XP. Find active missions in "Progress".</p>
+                </div>
+
+                <div class="p-3 bg-gray-800 bg-opacity-70 rounded-lg">
+                    <h3 class="text-md font-semibold text-blue-300 mb-1 flex items-center"><i class="fas fa-chart-line fa-fw mr-2 text-teal-400"></i>Streaks & Leaderboard</h3>
+                    <p class="text-sm text-gray-300">Study daily to build Streaks. Compete on the Leaderboard (XP or Streak)!</p>
+                </div>
+
+            </div>
+
+            <div class="flex justify-center mt-6 flex-shrink-0" style="flex-shrink: 0;">
+                <button id="close-rules" class="btn-primary"><i class="fas fa-check mr-2"></i>Got it!</button>
             </div>
         </div>
     </div>
@@ -122,35 +130,49 @@
 
         <!-- Vertical Navigation Bar -->
         <div class="fixed top-16 left-0 h-full bg-black bg-opacity-50 z-30 vertical-nav">
-            <div class="flex flex-col h-full justify-center space-y-6">
-                <button class="nav-tab active" data-target="timer-panel">
-                    <i class="fas fa-clock"></i>
-                    <span class="tab-text">Timer</span>
-                </button>
-                <button class="nav-tab" data-target="progress-panel">
-                    <i class="fas fa-chart-line"></i>
-                    <span class="tab-text">Progress</span>
-                </button>
-                <button class="nav-tab" data-target="environment-panel">
-                    <i class="fas fa-image"></i>
-                    <span class="tab-text">Environment</span>
-                </button>
-                <button class="nav-tab" data-target="stats-panel">
-                    <i class="fas fa-chart-bar"></i>
-                    <span class="tab-text">Stats</span>
-                </button>
-                <button class="nav-tab" data-target="daphinix-panel">
-                    <i class="fas fa-robot"></i>
-                    <span class="tab-text">Daphinix</span>
-                </button>
-                <button class="nav-tab" data-target="todo-panel">
-                    <i class="fas fa-tasks"></i>
-                    <span class="tab-text">To-Do</span>
-                </button>
-                <button class="nav-tab" data-target="rooms-panel">
-                    <i class="fas fa-users"></i>
-                    <span class="tab-text">Study Rooms</span>
-                </button>
+            <div class="nav-tabs-wrapper w-full h-full overflow-y-auto">
+                <div class="flex flex-col h-full space-y-2">
+                    <button class="nav-tab active" data-target="timer-panel">
+                        <i class="fas fa-clock"></i>
+                        <span class="tab-text">Timer</span>
+                    </button>
+                    <button class="nav-tab" data-target="progress-panel">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="tab-text">Progress</span>
+                    </button>
+                    <button class="nav-tab" data-target="environment-panel">
+                        <i class="fas fa-image"></i>
+                        <span class="tab-text">Environment</span>
+                    </button>
+                    <button class="nav-tab" data-target="stats-panel">
+                        <i class="fas fa-chart-bar"></i>
+                        <span class="tab-text">Stats</span>
+                    </button>
+                    <button class="nav-tab" data-target="daphinix-panel">
+                        <i class="fas fa-robot"></i>
+                        <span class="tab-text">Daphinix</span>
+                    </button>
+                    <button class="nav-tab" data-target="todo-panel">
+                        <i class="fas fa-tasks"></i>
+                        <span class="tab-text">To-Do</span>
+                    </button>
+                    <button class="nav-tab" data-target="rooms-panel">
+                        <i class="fas fa-users"></i>
+                        <span class="tab-text">Study Rooms</span>
+                    </button>
+                    <button class="nav-tab" data-target="leaderboard-panel">
+                        <i class="fas fa-trophy"></i>
+                        <span class="tab-text">Leaderboard</span>
+                    </button>
+                    <button class="nav-tab" data-target="guide-panel">
+                        <i class="fas fa-book-open"></i>
+                        <span class="tab-text">Guide</span>
+                    </button>
+                    <button class="nav-tab" data-target="inspire-panel">
+                        <i class="fas fa-lightbulb"></i>
+                        <span class="tab-text">Inspire</span>
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -236,9 +258,21 @@
                     <div id="badges" class="mb-4">
                         <h3 class="font-bold text-purple-300 mb-3"><i class="fas fa-trophy mr-1"></i> Badges:</h3>
                         <div class="bg-gray-800 bg-opacity-60 p-4 rounded-lg">
-                            <div id="badges-list" class="flex justify-center space-x-6"></div>
+                            <div id="badges-list" class="flex justify-center space-x-6 flex-wrap gap-y-4">
+                                <!-- Badges will be rendered here by script.js -->
+                                <p class="text-gray-400 text-sm italic hidden" id="no-badges-message">No badges earned yet. Keep up the good work!</p>
+                            </div>
                         </div>
                     </div>
+
+                    <div id="quests-container" class="mt-6">
+                        <h3 class="font-bold text-purple-300 mb-3"><i class="fas fa-map-signs mr-1"></i> Active Quests:</h3>
+                        <div id="active-quests-list" class="space-y-3 bg-gray-800 bg-opacity-60 p-4 rounded-lg max-h-60 overflow-y-auto">
+                            <!-- Active quests will be rendered here -->
+                             <p class="text-gray-400 text-sm italic" id="no-quests-message">No active quests. New quests may appear daily or weekly!</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -493,6 +527,142 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Leaderboard Panel -->
+            <div id="leaderboard-panel" class="content-panel">
+                <div class="bg-black bg-opacity-60 text-white p-6 rounded-xl max-w-3xl mx-auto">
+                    <div class="flex flex-col items-center mb-6">
+                        <i class="fas fa-trophy text-5xl text-yellow-400 mb-3"></i>
+                        <h2 class="text-3xl font-bold text-center text-purple-300">Hall of Fame</h2>
+                        <p class="text-sm text-gray-400 mt-1">See who's leading the pack in focus and dedication!</p>
+                    </div>
+                    <div class="mb-6 flex justify-center">
+                        <div class="inline-flex rounded-md shadow-sm bg-gray-800 p-1">
+                            <button data-type="xp" class="leaderboard-filter-btn active px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-l-md hover:bg-purple-700 focus:z-10 focus:ring-2 focus:ring-purple-500">
+                                <i class="fas fa-star mr-1"></i> Top XP
+                            </button>
+                            <button data-type="streak" class="leaderboard-filter-btn px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white focus:z-10 focus:ring-2 focus:ring-purple-500 rounded-r-md">
+                                <i class="fas fa-fire mr-1"></i> Top Streaks
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="leaderboard-loading" class="text-center text-gray-400 my-8 hidden">
+                        <i class="fas fa-spinner fa-spin fa-2x mr-2"></i>
+                        <p>Loading leaderboard...</p>
+                    </div>
+                    <div id="leaderboard-error" class="text-center text-red-400 my-8 hidden">
+                        <i class="fas fa-exclamation-triangle fa-2x mr-2"></i>
+                        <p>Could not load leaderboard. Please try again later.</p>
+                    </div>
+
+                    <div class="overflow-hidden shadow-lg rounded-lg border border-gray-700">
+                        <table class="min-w-full bg-gray-800">
+                            <thead class="bg-gray-700">
+                                <tr>
+                                    <th class="py-3 px-4 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Rank</th>
+                                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
+                                    <th class="py-3 px-4 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Level</th>
+                                    <th class="py-3 px-4 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">XP</th>
+                                    <th class="py-3 px-4 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Streak</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-table-body" class="divide-y divide-gray-700">
+                                <!-- Leaderboard rows will be injected here -->
+                            </tbody>
+                        </table>
+                        <p id="no-leaderboard-data" class="text-gray-400 text-center py-6 hidden bg-gray-800">No data available for this leaderboard.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guide Panel (New) -->
+            <div id="guide-panel" class="content-panel">
+                <div class="bg-black bg-opacity-70 text-white p-6 rounded-xl max-w-4xl mx-auto w-full">
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-8 text-center text-purple-300">
+                        <i class="fas fa-book-open mr-2"></i>Gamification Guide
+                    </h2>
+
+                    <!-- All Badges Section -->
+                    <div id="guide-all-badges-section" class="mb-10">
+                        <h3 class="text-xl sm:text-2xl font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-400">
+                            <i class="fas fa-medal mr-2"></i>All Collectible Badges
+                        </h3>
+                        <div id="guide-badges-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <!-- Badges will be rendered here by script.js -->
+                             <p class="text-gray-400 italic col-span-full text-center" id="no-badge-definitions-message">Badge definitions could not be loaded.</p>
+                        </div>
+                    </div>
+
+                    <!-- All Quest Types Section -->
+                    <div id="guide-all-quests-section">
+                        <h3 class="text-xl sm:text-2xl font-semibold text-purple-300 mb-4 pb-2 border-b border-purple-400">
+                            <i class="fas fa-tasks mr-2"></i>Available Quest Types
+                        </h3>
+                        <div id="guide-daily-quests-list" class="mb-6">
+                            <h4 class="text-lg font-semibold text-blue-300 mb-3"><i class="fas fa-sun mr-2"></i>Daily Quests</h4>
+                            <div class="space-y-3">
+                                <!-- Daily quest types will be rendered here -->
+                                <p class="text-gray-400 italic" id="no-daily-quest-definitions-message">No daily quest types defined or loaded.</p>
+                            </div>
+                        </div>
+                        <div id="guide-weekly-quests-list">
+                            <h4 class="text-lg font-semibold text-blue-300 mb-3"><i class="fas fa-calendar-week mr-2"></i>Weekly Quests</h4>
+                            <div class="space-y-3">
+                                <!-- Weekly quest types will be rendered here -->
+                                 <p class="text-gray-400 italic" id="no-weekly-quest-definitions-message">No weekly quest types defined or loaded.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inspire Me Panel (New) -->
+            <div id="inspire-panel" class="content-panel">
+                <div class="bg-black bg-opacity-70 text-white p-4 sm:p-6 rounded-xl max-w-2xl mx-auto w-full text-center">
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center text-purple-300">
+                        <i class="fas fa-lightbulb mr-2"></i>Inspire Me
+                    </h2>
+
+                    <!-- Thought Prompt -->
+                    <div id="prompt-container" class="mb-6 p-4 bg-gray-800 bg-opacity-70 rounded-lg shadow-lg min-h-[80px] flex items-center justify-center">
+                        <p id="thought-prompt-display" class="text-md text-gray-200 italic">What is one small step you can take towards your goals today?</p>
+                    </div>
+
+                    <!-- Quote -->
+                    <div id="quote-container" class="mb-6 p-4 sm:p-6 bg-gray-800 bg-opacity-70 rounded-lg shadow-lg min-h-[100px] flex items-center justify-center">
+                        <p id="quote-display" class="text-lg italic text-gray-200">"The best way to predict the future is to create it."</p>
+                    </div>
+
+                    <!-- Meme Section -->
+                    <div class="mb-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-3">
+                            <h3 class="text-xl font-semibold text-purple-300 mb-2 sm:mb-0">Daily Meme Dose</h3>
+                            <select id="meme-category-select" class="settings-select sm:w-auto text-sm py-1.5 px-3">
+                                <option value="general" selected>General</option>
+                                <option value="study">Study Humor</option>
+                                <option value="wholesome">Wholesome</option>
+                                <option value="programming">Programming</option>
+                                <option value="motivation">Motivational</option>
+                            </select>
+                        </div>
+                        <div id="meme-container" class="p-2 sm:p-4 bg-gray-800 bg-opacity-70 rounded-lg shadow-lg min-h-[250px] sm:min-h-[300px] flex items-center justify-center">
+                            <img id="meme-display" src="/static/assets/images/placeholder_meme.png" alt="Motivational Meme" class="max-w-full max-h-72 sm:max-h-80 rounded">
+                        </div>
+                    </div>
+
+                    <!-- Fact of the Day -->
+                    <div id="fact-container" class="mb-8 p-4 bg-gray-800 bg-opacity-70 rounded-lg shadow-lg min-h-[80px] flex flex-col items-center justify-center">
+                        <h4 class="text-md font-semibold text-purple-300 mb-1">💡 Fact of the Day:</h4>
+                        <p id="fact-display" class="text-sm text-gray-300">The electrifying truth is often stranger than fiction!</p>
+                    </div>
+                    
+                    <button id="refresh-inspire-content" class="btn-primary px-6 py-3 text-lg w-full sm:w-auto">
+                        <i class="fas fa-sync-alt mr-2"></i>Get New Inspiration
+                    </button>
+                </div>
+            </div>
+
         </div>
 
         <!-- Focus Mode Overlay -->

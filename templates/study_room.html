@@ -24,39 +24,38 @@
 <div id="workspace" class="relative z-10 w-full h-full">
     <!-- Header Section with Room Info and Controls -->
     <div class="fixed top-0 left-0 right-0 bg-black bg-opacity-60 backdrop-blur-sm p-2 z-30 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
+        <div class="container mx-auto flex flex-wrap sm:flex-nowrap justify-center sm:justify-between items-center">
             <!-- Left: App Name -->
-            <div class="logo-container flex items-center">
-                <h1 class="text-3xl font-bold logo-text">FocusOS</h1>
+            <div class="logo-container flex items-center order-1 sm:order-none mb-2 sm:mb-0">
+                <h1 class="text-2xl sm:text-3xl font-bold logo-text">FocusOS</h1>
             </div>
             <!-- Center: Room Name -->
-            <div class="flex-1 flex justify-center">
-                <span class="text-2xl font-bold text-purple-200 room-name-center">{{ room.name }}</span>
+            <div class="flex-1 flex justify-center order-2 sm:order-none w-full sm:w-auto mb-2 sm:mb-0">
+                <span class="text-sm sm:text-lg text-purple-200 room-name-center text-center" style="font-weight: normal;">{{ room.name }}</span>
             </div>
             <!-- Right: Room Code, Notifications, and Controls -->
-            <div class="flex items-center space-x-4">
-                <span class="text-purple-200 text-lg">Room Code: <span class="font-mono room-code-display">{{ room.code }}</span></span>
+            <div class="flex items-center space-x-2 sm:space-x-4 order-3 sm:order-none mb-2 sm:mb-0">
                 <!-- Notification Bell -->
                 <div class="relative">
-                    <button id="notification-bell" class="text-white hover:text-purple-300 transition-colors relative">
-                        <i class="fas fa-bell text-xl"></i>
+                    <button id="notification-bell" class="text-white hover:text-purple-300 transition-colors relative p-1 sm:p-2">
+                        <i class="fas fa-bell text-base sm:text-xl"></i>
                         <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
                     </button>
                     <!-- Notification Panel -->
-                    <div id="notification-panel" class="absolute right-0 mt-2 w-80 bg-gray-900 rounded-lg shadow-lg border border-purple-500 hidden">
-                        <div class="p-3 border-b border-gray-700 flex justify-between items-center">
-                            <h3 class="text-white font-semibold">Notifications</h3>
-                            <button id="clear-notifications" class="text-gray-400 hover:text-white text-sm">
+                    <div id="notification-panel" class="absolute right-0 mt-2 w-64 sm:w-80 bg-gray-900 rounded-lg shadow-lg border border-purple-500 hidden">
+                        <div class="p-2 sm:p-3 border-b border-gray-700 flex justify-between items-center">
+                            <h3 class="text-white font-semibold text-sm sm:text-base">Notifications</h3>
+                            <button id="clear-notifications" class="text-gray-400 hover:text-white text-xs sm:text-sm">
                                 <i class="fas fa-trash-alt"></i> Clear All
                             </button>
                         </div>
-                        <div id="notification-list" class="max-h-96 overflow-y-auto">
+                        <div id="notification-list" class="max-h-80 sm:max-h-96 overflow-y-auto">
                             <!-- Notifications will be added here -->
                         </div>
                     </div>
                 </div>
-                <button id="invite-btn" class="btn-primary"><i class="fas fa-user-plus"></i> Invite</button>
-                <button id="leave-room" class="btn-danger"><i class="fas fa-sign-out-alt"></i> Leave</button>
+                <button id="invite-btn" class="btn-primary text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"><i class="fas fa-user-plus sm:mr-1"></i> <span class="hidden sm:inline">Invite</span></button>
+                <button id="leave-room" class="btn-danger text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"><i class="fas fa-sign-out-alt sm:mr-1"></i> <span class="hidden sm:inline">Leave</span></button>
             </div>
         </div>
     </div>
@@ -116,7 +115,7 @@
 
     <!-- Vertical Navigation Bar -->
     <div class="fixed top-16 left-0 h-full bg-black bg-opacity-50 z-30 vertical-nav">
-        <div class="flex flex-col h-full justify-center space-y-6">
+        <div class="flex flex-col h-full space-y-2">
             <button class="nav-tab active" data-target="timer-panel"><i class="fas fa-clock"></i><span class="tab-text">Timer</span></button>
             <button class="nav-tab" data-target="participants-panel"><i class="fas fa-users"></i><span class="tab-text">Participants</span></button>
             <button class="nav-tab" data-target="chat-panel"><i class="fas fa-comments"></i><span class="tab-text">Chat</span></button>
@@ -185,12 +184,12 @@
 
         <!-- Chat Panel -->
         <div id="chat-panel" class="content-panel">
-            <div class="bg-black bg-opacity-60 text-white p-4 rounded-xl w-full mx-auto">
-                <h2 class="text-2xl font-bold mb-4 text-center text-purple-300">Room Chat</h2>
-                <div id="chat-messages" class="chat-messages bg-gray-800 bg-opacity-60 rounded-lg px-2 py-1 mb-2" style="height: 300px; max-height: 300px; overflow-y: auto; font-size: 0.92rem;"></div>
-                <div class="chat-input-container flex items-center mt-1">
-                    <input type="text" id="chat-input" class="flex-1 bg-gray-800 bg-opacity-80 text-white rounded-lg py-2 px-3 mr-1 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Type a message..." style="font-size: 0.95rem;">
-                    <button id="send-message" class="btn-primary px-4 py-2 text-lg"><i class="fas fa-paper-plane"></i></button>
+            <div class="bg-black bg-opacity-60 text-white p-4 rounded-xl w-full mx-auto flex flex-col" style="height: 80vh; max-height: calc(100vh - 120px);">
+                <h2 class="text-2xl font-bold mb-4 text-center text-purple-300 flex-shrink-0">Room Chat</h2>
+                <div id="chat-messages" class="chat-messages bg-gray-800 bg-opacity-60 rounded-lg px-2 py-1 mb-2 flex-grow" style="overflow-y: auto; font-size: 0.92rem;"></div>
+                <div class="chat-input-area mt-1 flex-shrink-0">
+                    <textarea id="chat-input" class="w-full bg-gray-800 bg-opacity-80 text-white rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-2 resize-none" placeholder="Type a message..." style="font-size: 0.95rem;" rows="2"></textarea>
+                    <button id="send-message" class="btn-primary w-full py-2 text-lg"><i class="fas fa-paper-plane mr-2"></i>Send</button>
                 </div>
             </div>
         </div>

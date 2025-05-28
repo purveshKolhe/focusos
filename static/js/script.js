@@ -53,6 +53,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', unlockAudio, { once: true }); // Also unlock on keydown
     document.addEventListener('touchstart', unlockAudio, { once: true }); // For touch devices
 
+    // Global variable to store gamification settings (badges, quests definitions)
+    let gamificationSettings = {
+        badges: {},
+        quests: {},
+        leveling: { baseXpForLevelUp: 100 } // Default leveling
+    };
+    let currentUserProgress = {}; // To store the latest progress from server
+
     try {
         // Initialize Particles.js for ambient effect
         if (typeof particlesJS !== 'undefined') {
@@ -165,6 +173,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sound) {
                 sound.currentTime = 0;
                 sound.play().catch(e => console.warn("Error playing sound:", e));
+            }
+        }
+        
+        function createConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            } else {
+                console.warn('Confetti function not loaded or available.');
             }
         }
         
@@ -296,6 +316,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show target panel
             $(".content-panel").removeClass("active");
             $("#" + targetPanel).addClass("active");
+            
+            if (targetPanel === 'guide-panel') {
+                renderGamificationGuide(); // Render guide when tab is clicked
+            }
             
             playSound("sound-click");
         });
@@ -568,16 +592,18 @@ document.addEventListener('DOMContentLoaded', function() {
             $(".typing-message").remove();
             const botMessage = document.createElement('div');
             botMessage.className = 'bot-message message';
+            // Corrected template literal usage
             botMessage.innerHTML = `
-                <div class="message-header">Daphinix</div>
                     <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-sender">Daphinix</span>
+                    </div>
                     <div class="message-text">${marked.parse(responseText)}</div>
                         </div>
             `;
             $("#responseArea").append(botMessage);
             scrollToBottom();
             playSound("sound-click");
-            // Render LaTeX
             if (window.MathJax) {
                 MathJax.typesetPromise();
             }
@@ -591,6 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
             $(".typing-message").remove();
             
             // Add error message
+            // Corrected template literal usage
             $("#responseArea").append(`
                 <div class="message bot-message">
                     <div class="message-content">
@@ -603,9 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `);
-            
             scrollToBottom();
-            // showNotification("Error connecting to Daphinix", "error"); // Local toast fine
             showUIMessage("Daphinix AI", "Error connecting to Daphinix.", "error", false);
             $("#image-preview-container").hide();
             $("#image-preview").attr("src", "");
@@ -748,69 +773,26 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (isWorkSession) {
                 // Work session completed
-                // showNotification("Work session completed! Take a break.", "success");
                 showUIMessage("Timer", "Work session completed! Take a break.", "success", true);
                 
-                // Update user progress
-                const workMinutes = workDuration;
-                const currentXP = parseInt($("#xp").text());
-                const currentLevel = parseInt($("#level").text());
-                const totalMinutes = parseInt($("#total-time").text()) + workMinutes;
+                // Client-side XP and level calculation is now REMOVED.
+                // Server will calculate XP, level, badges, quests, streak based on the event.
+
+                // Add to session history for immediate UI feedback.
+                // The authoritative session history is managed by the server.
+                addSessionToHistory("work", workDuration); 
                 
-                // XP points: 10 per minute worked
-                const xpEarned = workMinutes * 10;
-                const newXP = currentXP + xpEarned;
-                
-                // Check if level up (XP needed for next level = current level * 100)
-                const xpForNextLevel = currentLevel * 100;
-                
-                if (newXP >= xpForNextLevel) {
-                    // Level up!
-                    const newLevel = currentLevel + 1;
-                    const excessXP = newXP - xpForNextLevel;
-                    
-                    $("#level").text(newLevel);
-                    $("#xp").text(excessXP);
-                    $("#xp-needed").text(newLevel * 100);
-                    
-                    // Reset progress bar with new level
-                    const newProgressPercentage = (excessXP / (newLevel * 100)) * 100;
-                    $("#xp-progress").css("width", newProgressPercentage + "%");
-                    
-                    // Celebration effects
-                    playSound("sound-levelup");
-                    createConfetti();
-                    // showNotification(`Level Up! You're now level ${newLevel}`, "success", 5000);
-                    showUIMessage("Progress", `Level Up! You're now level ${newLevel}`, "success", true);
-                } else {
-                    // Just update XP
-                    $("#xp").text(newXP);
-                    const progressPercentage = (newXP / xpForNextLevel) * 100;
-                    $("#xp-progress").css("width", progressPercentage + "%");
-                    // showNotification(`+${xpEarned} XP earned!`, "success");
-                    showUIMessage("Progress", `+${xpEarned} XP earned!`, "success", true);
-                }
-                
-                // Update total time
-                $("#total-time").text(totalMinutes);
-                $("#stats-total-time").text(totalMinutes + " min");
-                
-                // Check for badges
-                checkForBadges(totalMinutes);
-                
-                // Add to session history
-                addSessionToHistory(workMinutes);
-                
-                // Update session count
-                const totalSessions = parseInt($("#stats-total-sessions").text() || "0") + 1;
-                $("#stats-total-sessions").text(totalSessions);
-                
-                // Update streak
-                updateStreak();
+                // Trigger saveUserData with session completed event
+                // This will send the workDuration, and the server will handle all progress updates.
+                saveUserData({ event_type: "session_completed", event_data: { duration: workDuration } });
+
             } else {
                 // Break completed
-                // showNotification("Break completed! Ready for work?", "success");
                 showUIMessage("Timer", "Break completed! Ready for work?", "success", true);
+                addSessionToHistory("break", breakDuration); 
+                // Optionally, save data after a break if there's any specific server logic for it
+                // or if just to keep sessionHistory on server up-to-date.
+                saveUserData(); // Send a general save, no specific event for break completion gamification by default.
             }
             
             // Switch to the other session type
@@ -820,112 +802,38 @@ document.addEventListener('DOMContentLoaded', function() {
             startTimer();
         }
         
-        function checkForBadges(totalMinutes) {
-            // Badge thresholds
-            const bronzeBadge = 60; // 1 hour
-            const silverBadge = 300; // 5 hours
-            const goldBadge = 1000; // 16+ hours
-            
-            let badgeEarned = null;
-            
-            if (totalMinutes >= goldBadge && !$("#badge-gold").length) {
-                badgeEarned = {
-                    id: "badge-gold",
-                    name: "Master",
-                    class: "gold",
-                    icon: "fa-crown"
-                };
-            } else if (totalMinutes >= silverBadge && !$("#badge-silver").length) {
-                badgeEarned = {
-                    id: "badge-silver",
-                    name: "Scholar",
-                    class: "silver",
-                    icon: "fa-award"
-                };
-            } else if (totalMinutes >= bronzeBadge && !$("#badge-bronze").length) {
-                badgeEarned = {
-                    id: "badge-bronze",
-                    name: "Beginner",
-                    class: "bronze",
-                    icon: "fa-medal"
-                };
-            }
-            
-            if (badgeEarned) {
-                const badge = $(`
-                    <div id="${badgeEarned.id}" class="badge ${badgeEarned.class} tooltip">
-                        <i class="fas ${badgeEarned.icon}"></i>
-                        <span class="tooltiptext">${badgeEarned.name}</span>
-                    </div>
-                `);
-                
-                $("#badges-list").append(badge);
-                
-                // Update total badge count
-                const totalBadges = $("#badges-list .badge").length;
-                $("#stats-total-badges").text(totalBadges);
-                
-                // Celebration and notification
-                playSound("sound-levelup");
-                // showNotification(`New Badge: ${badgeEarned.name}!`, "success", 5000);
-                showUIMessage("Progress", `New Badge: ${badgeEarned.name}!`, "success", true);
-                setTimeout(createConfetti, 500);
-            }
-        }
+        // This function is now deprecated. Badge checking is server-side.
+        /* function checkForBadges(totalMinutes) { ... } */
         
-        function addSessionToHistory(duration) {
+        function addSessionToHistory(type, duration) {
             const date = new Date();
-            const dateStr = date.toLocaleDateString();
-            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            // Create the new session entry
-            const sessionEntry = $(`
-                <div class="session-entry bg-gray-700 bg-opacity-50 p-2 rounded mb-2 flex justify-between items-center">
+            // This function primarily updates the UI for immediate feedback.
+            // Authoritative session history is managed server-side based on events.
+
+            const displayDateStr = date.toLocaleDateString();
+            const displayTimeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const sessionEntryHTML = $(`
+                <div class="session-entry bg-gray-700 bg-opacity-50 p-2 rounded mb-2 flex justify-between items-center" data-timestamp="${date.toISOString()}">
                     <div>
-                        <span class="text-xs text-gray-400">${dateStr} at ${timeStr}</span>
-                        <p class="text-sm">${duration} min study session</p>
+                        <span class="text-xs text-gray-400">${displayDateStr} at ${displayTimeStr}</span>
+                        <p class="text-sm">${duration} min ${type} session</p>
                     </div>
                     <div class="text-purple-300"><i class="fas fa-check-circle"></i></div>
                 </div>
             `);
             
-            // Remove "no sessions" message if it exists
-            $("#recent-sessions .text-center").remove();
+            $("#recent-sessions .text-center").remove(); // Remove "no sessions" message if it exists
+            $("#recent-sessions").prepend(sessionEntryHTML);
             
-            // Add new session to the top
-            $("#recent-sessions").prepend(sessionEntry);
-            
-            // Limit to last 10 sessions
-            const sessionEntries = $("#recent-sessions .session-entry");
-            if (sessionEntries.length > 10) {
-                sessionEntries.last().remove();
+            // Limit to last 10 sessions shown in UI
+            const sessionEntriesUI = $("#recent-sessions .session-entry");
+            if (sessionEntriesUI.length > 10) {
+                sessionEntriesUI.last().remove();
             }
         }
         
-        function updateStreak() {
-            // Get current streak
-            const currentStreak = parseInt($("#streak").text());
-            
-            // Check if already studied today (to avoid multiple streak increases)
-            const today = new Date().toLocaleDateString();
-            const lastStudyDay = localStorage.getItem("lastStudyDay");
-            
-            if (lastStudyDay !== today) {
-                // New study day!
-                const newStreak = currentStreak + 1;
-                $("#streak").text(newStreak);
-                
-                if (newStreak % 7 === 0) {
-                    // Weekly streak milestone
-                    // showNotification(`${newStreak} day streak! Keep it up!`, "success", 5000);
-                    showUIMessage("Progress", `${newStreak} day streak! Keep it up!`, "success", true);
-                    setTimeout(createConfetti, 500);
-                }
-                
-                // Save today as last study day
-                localStorage.setItem("lastStudyDay", today);
-            }
-        }
+        // This function is deprecated. Streak is server-side.
+        /* function updateStreak() { ... } */
         
         // Timer control button event handlers
         $("#start-timer").click(function() {
@@ -961,8 +869,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     </video>
                 `);
             } else if (selection === "video2") {
-                // Google Drive blocks direct streaming, show a message or fallback
-                container.append('<div class="w-full h-full flex items-center justify-center text-white text-xl bg-black bg-opacity-70">Rainy Window video cannot be streamed directly. Please download and place it in /static/assets/videos/rainy_window.mp4</div>');
+                // Updated to local path
+                const localVideoUrl = '/static/assets/videos/rainy_window.mp4'; 
+                container.append(`
+                    <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
+                        <source src="${localVideoUrl}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                `);
+                console.log('Set background to local video:', localVideoUrl);
             } else if (selection === "video3") {
                 container.append(`
                     <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
@@ -1106,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // loadUserData(); // We will call this after Firebase auth
         
         // Save user data every minute
-        setInterval(saveUserData, 60000);
+        // setInterval(saveUserData, 60000); // Auto-save is fine, but session completion is key
         
         async function loadUserDataAndInitNotifications() {
             try {
@@ -1131,48 +1046,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const displayUsername = userDataFromAPI.display_username || apiUserId || 'User';
                 console.log(`[Main Interface] API UserID: ${apiUserId}, Display Name: ${displayUsername}`);
 
-                // Update UI with userDataFromAPI
+                // Store gamification settings globally
+                if (userDataFromAPI.gamification_settings) {
+                    gamificationSettings.badges = userDataFromAPI.gamification_settings.badges || {};
+                    gamificationSettings.quests = userDataFromAPI.gamification_settings.quests || {};
+                    gamificationSettings.leveling = userDataFromAPI.gamification_settings.leveling || { baseXpForLevelUp: 100 }; 
+                    console.log("[Main Interface] Gamification settings loaded:", JSON.parse(JSON.stringify(gamificationSettings)));
+                } else {
+                    console.warn("[Main Interface] No gamification_settings received from API.");
+                }
+                
+                // Update UI with userDataFromAPI.progress
                 if (userDataFromAPI.progress) {
-                    $("#level").text(userDataFromAPI.progress.level || 1);
-                    $("#xp").text(userDataFromAPI.progress.xp || 0);
-                    $("#xp-needed").text((userDataFromAPI.progress.level || 1) * 100);
-                    $("#total-time").text(userDataFromAPI.progress.total_time || 0);
-                    $("#streak").text(userDataFromAPI.progress.streak || 0);
-                    
-                    $("#stats-total-time").text((userDataFromAPI.progress.total_time || 0) + " min");
-                    $("#stats-total-sessions").text(userDataFromAPI.progress.sessions || 0);
-                    
-                    const progressPercentage = ((userDataFromAPI.progress.xp || 0) / ((userDataFromAPI.progress.level || 1) * 100)) * 100;
-                    $("#xp-progress").css("width", progressPercentage + "%");
-                    
-                    $("#badges-list").empty();
-                    if (userDataFromAPI.progress.badges) {
-                        if (userDataFromAPI.progress.badges.bronze) {
-                            $("#badges-list").append(`
-                                <div id="badge-bronze" class="badge bronze tooltip">
-                                    <i class="fas fa-medal"></i>
-                                    <span class="tooltiptext">Beginner</span>
-                                </div>
-                            `);
-                        }
-                        if (userDataFromAPI.progress.badges.silver) {
-                            $("#badges-list").append(`
-                                <div id="badge-silver" class="badge silver tooltip">
-                                    <i class="fas fa-award"></i>
-                                    <span class="tooltiptext">Scholar</span>
-                                </div>
-                            `);
-                        }
-                        if (userDataFromAPI.progress.badges.gold) {
-                            $("#badges-list").append(`
-                                <div id="badge-gold" class="badge gold tooltip">
-                                    <i class="fas fa-crown"></i>
-                                    <span class="tooltiptext">Master</span>
-                                </div>
-                            `);
-                        }
-                    }
-                    $("#stats-total-badges").text($("#badges-list .badge").length);
+                    currentUserProgress = userDataFromAPI.progress; // Store current progress
+                    updateProgressUI(currentUserProgress); // New function to update all progress UI
                 }
 
 
@@ -1228,43 +1115,317 @@ document.addEventListener('DOMContentLoaded', function() {
         // Call the new function that handles both user data loading and notification init
         loadUserDataAndInitNotifications();
         
-        async function loadUserData() {
-            // This function is now effectively replaced by loadUserDataAndInitNotifications
-            // but we keep a shell or parts of it if other parts of the script call it directly,
-            // or refactor those calls. For now, let's assume loadUserDataAndInitNotifications is the primary.
-            // The UI update part is now inside loadUserDataAndInitNotifications.
-            console.warn("[Main Interface] loadUserData() was called, but logic is now in loadUserDataAndInitNotifications().");
+        function renderGamificationGuide() {
+            console.log("[renderGamificationGuide] Called.");
+            if (!gamificationSettings || !currentUserProgress) {
+                console.warn("[renderGamificationGuide] Gamification settings or user progress not yet loaded. Guide cannot be rendered.");
+                return;
+            }
+            // More detailed logging here
+            console.log("[renderGamificationGuide] gamificationSettings.badges available:", gamificationSettings.badges ? Object.keys(gamificationSettings.badges).length + " entries" : "undefined/null");
+            console.log("[renderGamificationGuide] gamificationSettings.badges content:", JSON.stringify(gamificationSettings.badges));
+
+            console.log("[renderGamificationGuide] gamificationSettings.quests available:", gamificationSettings.quests ? "Object found" : "undefined/null");
+            if (gamificationSettings.quests) {
+                console.log("[renderGamificationGuide] gamificationSettings.quests has 'daily' key:", gamificationSettings.quests.hasOwnProperty('daily'));
+                console.log("[renderGamificationGuide] gamificationSettings.quests has 'weekly' key:", gamificationSettings.quests.hasOwnProperty('weekly'));
+                if (gamificationSettings.quests.daily) {
+                    console.log("[renderGamificationGuide] gamificationSettings.quests.daily count:", gamificationSettings.quests.daily.length);
+                } else {
+                    console.log("[renderGamificationGuide] gamificationSettings.quests.daily is undefined or null");
+                }
+                if (gamificationSettings.quests.weekly) {
+                    console.log("[renderGamificationGuide] gamificationSettings.quests.weekly count:", gamificationSettings.quests.weekly.length);
+                } else {
+                    console.log("[renderGamificationGuide] gamificationSettings.quests.weekly is undefined or null");
+                }
+            }
+            console.log("[renderGamificationGuide] gamificationSettings.quests content:", JSON.stringify(gamificationSettings.quests));
+
+
+            console.log("[renderGamificationGuide] currentUserProgress.badges available:", currentUserProgress.badges ? currentUserProgress.badges.length + " entries" : "undefined/null/empty array");
+            console.log("[renderGamificationGuide] currentUserProgress.badges content:", JSON.stringify(currentUserProgress.badges));
+            
+            renderAllBadgesGuide(gamificationSettings.badges || {}, currentUserProgress.badges || []);
+            renderAllQuestTypesGuide(gamificationSettings.quests || {});
+        }
+
+        function renderAllBadgesGuide(allBadgeDefs, userEarnedBadgeIds) {
+            console.log("[renderAllBadgesGuide] Received allBadgeDefs:", JSON.parse(JSON.stringify(allBadgeDefs)), "userEarnedBadgeIds:", userEarnedBadgeIds);
+            const $badgeListContainer = $("#guide-badges-list");
+            const $noDefsMessage = $("#no-badge-definitions-message");
+            $badgeListContainer.empty(); // Clear previous badges
+
+            if (Object.keys(allBadgeDefs).length === 0) {
+                $noDefsMessage.removeClass("hidden");
+                return;
+            }
+            $noDefsMessage.addClass("hidden");
+
+            const earnedIdsSet = new Set(userEarnedBadgeIds || []);
+
+            for (const badgeId in allBadgeDefs) {
+                const badgeDef = allBadgeDefs[badgeId];
+                const isEarned = earnedIdsSet.has(badgeId);
+
+                const criteriaText = badgeDef.criteria_text || badgeDef.description || "Criteria not specified.";
+
+                const badgeCardHtml = `
+                    <div class="guide-badge-card ${isEarned ? 'earned' : 'unearned'}">
+                        <div class="badge-icon-container" style="background-color: ${isEarned ? (badgeDef.color || '#777') : 'transparent'};">
+                            <i class="fas ${badgeDef.icon || 'fa-question-circle'} fa-fw" style="color: ${isEarned ? (badgeDef.textColor || 'white') : '#9ca3af'};"></i>
+                        </div>
+                        <p class="badge-name">${badgeDef.name || "Unnamed Badge"}</p>
+                        <p class="badge-description">${badgeDef.description || "No description."}</p>
+                        <p class="badge-criteria">How to earn: ${criteriaText}</p>
+                    </div>
+                `;
+                $badgeListContainer.append(badgeCardHtml);
+            }
+        }
+
+        function renderAllQuestTypesGuide(allQuestTypeDefs) {
+            console.log("[renderAllQuestTypesGuide] Received allQuestTypeDefs:", JSON.parse(JSON.stringify(allQuestTypeDefs)));
+            const $dailyListContainer = $("#guide-daily-quests-list .space-y-3");
+            const $weeklyListContainer = $("#guide-weekly-quests-list .space-y-3");
+            const $noDailyMessage = $("#no-daily-quest-definitions-message");
+            const $noWeeklyMessage = $("#no-weekly-quest-definitions-message");
+
+            $dailyListContainer.empty();
+            $weeklyListContainer.empty();
+
+            if (allQuestTypeDefs.daily && allQuestTypeDefs.daily.length > 0) {
+                $noDailyMessage.addClass("hidden");
+                allQuestTypeDefs.daily.forEach(template => {
+                    const descExample = template.descriptionTemplate.replace("{N}", "(e.g., " + template.targetMin + "-" + template.targetMax + ")");
+                    const questCardHtml = `
+                        <div class="guide-quest-card">
+                            <h5 class="quest-title flex items-center"><i class="fas ${template.icon || 'fa-clipboard-list'} fa-fw mr-2"></i>${template.title}</h5>
+                            <p class="quest-description-template">${descExample}</p>
+                            <p class="quest-details">Goal Type: ${template.goalType} | Reward: ~${template.rewardXp} XP</p>
+                        </div>
+                    `;
+                    $dailyListContainer.append(questCardHtml);
+                });
+            } else {
+                $noDailyMessage.removeClass("hidden");
+            }
+
+            if (allQuestTypeDefs.weekly && allQuestTypeDefs.weekly.length > 0) {
+                $noWeeklyMessage.addClass("hidden");
+                allQuestTypeDefs.weekly.forEach(template => {
+                    const descExample = template.descriptionTemplate.replace("{N}", "(e.g., " + template.targetMin + "-" + template.targetMax + ")");
+                    const questCardHtml = `
+                        <div class="guide-quest-card">
+                            <h5 class="quest-title flex items-center"><i class="fas ${template.icon || 'fa-calendar-alt'} fa-fw mr-2"></i>${template.title}</h5>
+                            <p class="quest-description-template">${descExample}</p>
+                            <p class="quest-details">Goal Type: ${template.goalType} | Reward: ~${template.rewardXp} XP</p>
+                        </div>
+                    `;
+                    $weeklyListContainer.append(questCardHtml);
+                });
+            } else {
+                $noWeeklyMessage.removeClass("hidden");
+            }
+        }
+
+        function updateProgressUI(progressData) {
+            if (!progressData) {
+                console.warn("updateProgressUI called with no progressData");
+                return;
+            }
+            console.log("Updating UI with progress data:", progressData);
+
+            const currentLevel = progressData.level || 1;
+            const xpNeededForNextLevel = (gamificationSettings.leveling?.baseXpForLevelUp || 100) * currentLevel;
+
+            $("#level").text(currentLevel);
+            $("#xp").text(progressData.xp || 0);
+            $("#xp-needed").text(xpNeededForNextLevel);
+            
+            $("#total-time").text(progressData.total_time || 0);
+            $("#streak").text(progressData.streak || 0);
+            
+            $("#stats-total-time").text((progressData.total_time || 0) + " min");
+            $("#stats-total-sessions").text(progressData.sessions || 0);
+            
+            const progressPercentage = xpNeededForNextLevel > 0 ? ((progressData.xp || 0) / xpNeededForNextLevel) * 100 : 0;
+            $("#xp-progress").css("width", Math.min(100, progressPercentage) + "%"); // Cap at 100%
+
+            renderBadges(progressData.badges || [], gamificationSettings.badges || {});
+            renderQuests(progressData.activeQuests || [], gamificationSettings.quests || {});
+
+            // Render session history from server data
+            $("#recent-sessions").empty();
+            if (progressData.sessionHistory && progressData.sessionHistory.length > 0) {
+                const sortedHistory = [...progressData.sessionHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+                sortedHistory.slice(0, 10).forEach(session => { // Display last 10
+                    const date = new Date(session.date);
+                    const displayDateStr = date.toLocaleDateString();
+                    const displayTimeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const sessionEntryHTML = $(`
+                        <div class="session-entry bg-gray-700 bg-opacity-50 p-2 rounded mb-2 flex justify-between items-center" data-timestamp="${session.date}">
+                            <div>
+                                <span class="text-xs text-gray-400">${displayDateStr} at ${displayTimeStr}</span>
+                                <p class="text-sm">${session.duration} min ${session.type} session</p>
+                            </div>
+                            <div class="text-purple-300"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                    `);
+                    $("#recent-sessions").append(sessionEntryHTML);
+                });
+            } else {
+                $("#recent-sessions").html('<p class="text-gray-400 text-center">No sessions recorded yet.</p>');
+            }
+        }
+
+        function renderBadges(userBadgeIds, badgeDefinitionsFromServer) {
+            const $badgesList = $("#badges-list");
+            $badgesList.empty();
+            let awardedCount = 0;
+            const badgeDefsToUse = badgeDefinitionsFromServer || gamificationSettings.badges || {};
+
+            if (userBadgeIds && userBadgeIds.length > 0 && Object.keys(badgeDefsToUse).length > 0) {
+                userBadgeIds.forEach(badgeId => {
+                    const badgeDef = badgeDefsToUse[badgeId];
+                    if (badgeDef) {
+                        const badgeHtml = `
+                            <div id="badge-${badgeId}" class="badge tooltip shadow-md" style="background: ${badgeDef.color || '#777'}; color: ${badgeDef.textColor || 'white'}" title="${badgeDef.name} - ${badgeDef.description}">
+                                <i class="fas ${badgeDef.icon || 'fa-medal'}"></i>
+                                <span class="tooltiptext">${badgeDef.name}: ${badgeDef.description}</span>
+                            </div>`;
+                        $badgesList.append(badgeHtml);
+                        awardedCount++;
+                    }
+                });
+            }
+            
+            if (awardedCount === 0) {
+                $("#no-badges-message").removeClass("hidden");
+            } else {
+                 $("#no-badges-message").addClass("hidden");
+            }
+            $("#stats-total-badges").text(awardedCount);
+        }
+
+        function renderQuests(activeQuests, questDefinitionsFromServer) {
+            const $questsList = $("#active-quests-list");
+            $questsList.empty();
+            const questDefsToUse = questDefinitionsFromServer || gamificationSettings.quests || {};
+
+            if (activeQuests && activeQuests.length > 0 && (questDefsToUse.daily || questDefsToUse.weekly)) {
+                 $("#no-quests-message").addClass("hidden");
+                activeQuests.forEach(quest => {
+                    const template = questDefsToUse.daily?.[quest.templateId] || questDefsToUse.weekly?.[quest.templateId];
+                    if (template) {
+                        const progressPercentage = quest.goal > 0 ? Math.min(100, (quest.currentProgress / quest.goal) * 100) : 0;
+                        const questHtml = `
+                            <div class="quest-item bg-gray-700 bg-opacity-70 p-3 rounded-lg shadow-sm">
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="font-semibold text-sm text-purple-300">${quest.title}</h4>
+                                    ${!quest.completed ? `<span class="text-xs text-gray-400">${quest.currentProgress} / ${quest.goal}</span>` : ''}
+                                </div>
+                                <p class="text-xs text-gray-300 mb-2">${quest.description}</p>
+                                ${!quest.completed ? `
+                                <div class="w-full bg-gray-600 rounded-full h-1.5">
+                                    <div class="bg-gradient-to-r from-green-400 to-blue-500 h-1.5 rounded-full transition-all duration-500 ease-out" style="width: ${progressPercentage}%"></div>
+                                </div>
+                                ` : `
+                                <div class="text-xs text-green-400 mt-1 font-semibold flex items-center">
+                                    <i class="fas fa-check-circle mr-1"></i> Completed! +${template.rewardXp || '??'} XP
+                                </div>`}
+                            </div>
+                        `;
+                        $questsList.append(questHtml);
+                    }
+                });
+            } else {
+                $("#no-quests-message").removeClass("hidden");
+            }
         }
         
-        async function saveUserData() {
+        async function loadUserData() {
+            console.warn("[Main Interface] loadUserData() was called, but logic is now in loadUserDataAndInitNotifications(). Triggering it.");
+            await loadUserDataAndInitNotifications();
+        }
+        
+        async function saveUserData(eventDetails = null) {
             try {
-                const userData = {
-                    level: parseInt($("#level").text()),
-                    xp: parseInt($("#xp").text()),
-                    total_time: parseInt($("#total-time").text()),
-                    streak: parseInt($("#streak").text()),
-                    sessions: parseInt($("#stats-total-sessions").text()),
-                    badges: {
-                        bronze: $("#badge-bronze").length > 0,
-                        silver: $("#badge-silver").length > 0,
-                        gold: $("#badge-gold").length > 0
-                    },
-                    sessionHistory: []
+                let clientPayload = {
+                    progress: { // Always send current core progress for potential merge on server
+                        xp: parseInt($("#xp").text()) || 0,
+                        level: parseInt($("#level").text()) || 1,
+                        total_time: parseInt($("#total-time").text()) || 0,
+                        sessions: parseInt($("#stats-total-sessions").text()) || 0,
+                        // sessionHistory is now primarily managed by server based on events, 
+                        // but we can send the client's current known history for non-event syncs.
+                        sessionHistory: currentUserProgress.sessionHistory || [] 
+                    }
                 };
+
+                if (eventDetails && eventDetails.event_type) {
+                    clientPayload.event_type = eventDetails.event_type;
+                    clientPayload.event_data = eventDetails.event_data || {};
+                }
+                
+                console.log("Saving user data with payload:", JSON.stringify(clientPayload, null, 2));
                 
                 const response = await fetch('/api/user_data', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify(clientPayload)
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Failed to save user data');
+                    const errorText = await response.text();
+                    throw new Error(`Failed to save user data. Status: ${response.status}. Server: ${errorText}`);
                 }
+
+                const result = await response.json();
+                if (result.error) {
+                    throw new Error('Error from server saving user data: ' + result.error);
+                }
+
+                if (result.status === 'success') {
+                    console.log("User data saved/processed successfully. Server response:", result);
+                    if (result.progress) {
+                        currentUserProgress = result.progress; // Update global state
+                        updateProgressUI(currentUserProgress); // Refresh UI with server's authoritative state
+                    }
+
+                    // Handle notifications for gamification events from server response
+                    if (result.new_badges && result.new_badges.length > 0) {
+                        result.new_badges.forEach(badgeId => {
+                            const badgeDef = gamificationSettings.badges?.[badgeId];
+                            if (badgeDef) {
+                                showUIMessage("Badge Unlocked!", `You've earned the "${badgeDef.name}" badge! (${badgeDef.description})`, "success", true);
+                                playSound("sound-levelup");
+                                createConfetti();
+                            }
+                        });
+                    }
+                    if (result.leveled_up_to) {
+                        showUIMessage("Level Up!", `Congratulations! You've reached Level ${result.leveled_up_to}!`, "success", true);
+                        playSound("sound-levelup");
+                        createConfetti();
+                    }
+                    if (result.completed_quests && result.completed_quests.length > 0) {
+                         result.completed_quests.forEach(questTitle => {
+                            showUIMessage("Quest Completed!", `You've completed the quest: "${questTitle}"!`, "success", true);
+                            // XP for quest is handled server-side and included in progress update. Sound/confetti might be desired here too.
+                            playSound("sound-complete"); // Or a specific quest complete sound
+                        });
+                    }
+
+                } else {
+                    console.warn("User data save/process status not explicitly success:", result);
+                }
+
             } catch (error) {
                 console.error("Error saving user data:", error);
+                showUIMessage("Save Error", "Could not save your progress: " + error.message, "error", false);
             }
         }
 
@@ -1516,10 +1677,149 @@ document.addEventListener('DOMContentLoaded', function() {
             // loadUserData(); // Now called by loadUserDataAndInitNotifications
             loadTodoList();
             loadChatHistory();
+            fetchAndRenderLeaderboard('xp'); // Initial load with XP by default
+            fetchAndDisplayInspireContent(); // Initial load for Inspire Me tab
         });
 
-        // Save user data periodically
-        setInterval(saveUserData, 30000); // Save every 30 seconds
+        // Save user data periodically (for non-event syncs if needed)
+        // setInterval(() => saveUserData(), 120000); // Sync every 2 minutes
+        // More controlled saves are better, e.g., on window unload or specific non-critical actions.
+        window.addEventListener('beforeunload', () => saveUserData());
+
+
+        // Event listener for leaderboard type change
+        $(".leaderboard-filter-btn").click(function() {
+            const $this = $(this);
+            if ($this.hasClass('active')) return; // Already active
+
+            $(".leaderboard-filter-btn").removeClass('active bg-purple-600 text-white').addClass('text-gray-300 hover:bg-gray-700');
+            $this.removeClass('text-gray-300 hover:bg-gray-700').addClass('active bg-purple-600 text-white');
+            
+            const type = $this.data('type');
+            fetchAndRenderLeaderboard(type);
+        });
+
+        async function fetchAndRenderLeaderboard(type) {
+            const $tbody = $("#leaderboard-table-body");
+            const $loading = $("#leaderboard-loading");
+            const $error = $("#leaderboard-error");
+            const $noData = $("#no-leaderboard-data");
+            let currentFirebaseUser = null;
+            try {
+                 currentFirebaseUser = await window.firebaseAuthReady;
+            } catch (e) {
+                console.warn("Could not get current Firebase user for leaderboard context:", e);
+            }
+            const currentUsername = currentUserProgress?.username || (currentFirebaseUser ? currentFirebaseUser.displayName || currentFirebaseUser.email : null) || 'You'; // Fallback for display
+
+            $tbody.empty();
+            $loading.removeClass("hidden");
+            $error.addClass("hidden");
+            $noData.addClass("hidden");
+
+            try {
+                const response = await fetch(`/api/leaderboard/${type}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to load leaderboard: ${response.statusText}. Server: ${errorText}`);
+                }
+                const leaderboardData = await response.json(); // This is an array of top 20 users
+
+                if (leaderboardData && leaderboardData.length > 0) {
+                    let currentUserData = null;
+                    let currentUserRank = -1;
+
+                    leaderboardData.forEach((entry, index) => {
+                        if (entry.username === currentUserProgress.username) { // Assuming currentUserProgress.username is the unique ID
+                            currentUserData = entry;
+                            currentUserRank = entry.rank;
+                        }
+                    });
+
+                    const displayEntries = [];
+                    const addedUsernames = new Set();
+
+                    // 1. Add Top 3
+                    for (let i = 0; i < Math.min(3, leaderboardData.length); i++) {
+                        displayEntries.push(leaderboardData[i]);
+                        addedUsernames.add(leaderboardData[i].username);
+                    }
+
+                    // 2. Add Current User and Neighbors (if not already in top 3)
+                    if (currentUserData && currentUserRank > 3) {
+                        const userIndexInFetchedData = leaderboardData.findIndex(u => u.username === currentUserData.username);
+                        if (userIndexInFetchedData !== -1) {
+                            // Add a separator if there's a gap between top 3 and user's section
+                            if (displayEntries.length > 0 && leaderboardData[userIndexInFetchedData-1] && 
+                                !addedUsernames.has(leaderboardData[userIndexInFetchedData-1].username) && 
+                                userIndexInFetchedData > displayEntries.length) { // Check if the preceding element is not the last of top 3
+                                displayEntries.push({isSeparator: true});
+                            }
+
+                            // User -1 (if exists and not already added)
+                            if (userIndexInFetchedData > 0 && !addedUsernames.has(leaderboardData[userIndexInFetchedData - 1].username)) {
+                                displayEntries.push(leaderboardData[userIndexInFetchedData - 1]);
+                                addedUsernames.add(leaderboardData[userIndexInFetchedData - 1].username);
+                            }
+                            // Current User (if not already added - should not happen if rank > 3)
+                            if (!addedUsernames.has(currentUserData.username)){
+                                displayEntries.push(currentUserData);
+                                addedUsernames.add(currentUserData.username);
+                            }
+                            // User +1 (if exists and not already added)
+                            if (userIndexInFetchedData < leaderboardData.length - 1 && !addedUsernames.has(leaderboardData[userIndexInFetchedData + 1].username)) {
+                                displayEntries.push(leaderboardData[userIndexInFetchedData + 1]);
+                                // addedUsernames.add(leaderboardData[userIndexInFetchedData + 1].username); // No need to add to set if it's the last one added in this block
+                            }
+                        }
+                    } else if (currentUserData && currentUserRank <=3) {
+                        // User is in top 3, already added. Do nothing special here.
+                    } else if (!currentUserData && leaderboardData.length > 3) {
+                         // User not in top 20, add a separator after top 3 if there are more entries.
+                         displayEntries.push({isSeparator: true, customText: "Your rank is not in the top 20 for this board."})                    
+                    }
+
+                    displayEntries.forEach(entry => {
+                        if (entry.isSeparator) {
+                            const separatorText = entry.customText || "...";
+                            const separatorRow = `
+                                <tr>
+                                    <td colspan="5" class="py-2 px-3 text-center text-gray-500 text-xs italic">${separatorText}</td>
+                                </tr>
+                            `;
+                            $tbody.append(separatorRow);
+                            return;
+                        }
+
+                        let rankDisplay = entry.rank;
+                        if (entry.rank === 1) rankDisplay = '🥇';
+                        else if (entry.rank === 2) rankDisplay = '🥈';
+                        else if (entry.rank === 3) rankDisplay = '🥉';
+                        
+                        const isCurrentUserEntry = entry.username === currentUserProgress.username;
+
+                        const row = `
+                            <tr class="text-sm ${isCurrentUserEntry ? 'bg-purple-700 bg-opacity-30 font-semibold' : 'hover:bg-gray-700 bg-opacity-50'} transition-colors">
+                                <td class="py-2 px-3 border-b border-gray-700 text-center">${rankDisplay}</td>
+                                <td class="py-2 px-3 border-b border-gray-700">${entry.username} ${isCurrentUserEntry ? '(You)' : ''}</td>
+                                <td class="py-2 px-3 border-b border-gray-700 text-center">${entry.level}</td>
+                                <td class="py-2 px-3 border-b border-gray-700 text-right">${entry.xp}</td>
+                                <td class="py-2 px-3 border-b border-gray-700 text-center">${entry.streak}</td>
+                            </tr>
+                        `;
+                        $tbody.append(row);
+                    });
+                } else {
+                    $noData.removeClass("hidden");
+                }
+            } catch (err) {
+                console.error("Error fetching leaderboard:", err);
+                $error.text("Error: " + err.message).removeClass("hidden");
+            } finally {
+                $loading.addClass("hidden");
+            }
+        }
+
 
         // Initialize notification system
             const bell = document.getElementById('notification-bell');
@@ -1557,16 +1857,166 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
         // Global click listener to close notification panel if open and click is outside
-        document.addEventListener('click', function(e) {
+                document.addEventListener('click', function(e) {
             if (panel && !panel.classList.contains('hidden')) { // If panel is open
                 // Check if the click was outside the panel AND outside the bell
-                if (!panel.contains(e.target) && !bell.contains(e.target)) {
-                    panel.classList.add('hidden');
+                    if (!panel.contains(e.target) && !bell.contains(e.target)) {
+                        panel.classList.add('hidden');
                 }
             }
         });
         
         // Add welcome notification using the local showNotification
             // showNotification('Welcome!', 'Welcome to FocusOS. Start your productive journey!', 'info'); // This is a local toast, can be kept or removed
+
+        // Image Upload Logic for Daphinix in main interface
+        const $uploadImageBtn = $("#upload-image-btn");
+        const $imageUpload = $("#image-upload"); // The hidden file input
+        const $imagePreviewContainer = $("#image-preview-container");
+        const $imagePreview = $("#image-preview");
+        const $removeImageBtn = $("#remove-image-btn");
+
+        if ($uploadImageBtn.length && $imageUpload.length) {
+            $uploadImageBtn.click(function() {
+                $imageUpload.click(); // Trigger click on the hidden file input
+            });
+        }
+
+        if ($imageUpload.length) {
+            $imageUpload.change(function(e) {
+                const file = e.target.files[0];
+                if (file && $imagePreview.length && $imagePreviewContainer.length) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        $imagePreview.attr("src", event.target.result);
+                        $imagePreviewContainer.css("display", "flex");
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        if ($removeImageBtn.length) {
+            $removeImageBtn.click(function() {
+                $imagePreview.attr("src", "");
+                $imagePreviewContainer.hide();
+                $imageUpload.val(''); // Clear the file input
+            });
+        }
+
+        // --- Inspire Me Feature ---
+        const quotes = [
+            "The best way to predict the future is to create it.",
+            "Your limitation—it's only your imagination.",
+            "Push yourself, because no one else is going to do it for you.",
+            "Great things never come from comfort zones.",
+            "Dream it. Wish it. Do it.",
+            "Success doesn't just find you. You have to go out and get it.",
+            "The harder you work for something, the greater you'll feel when you achieve it.",
+            "Dream bigger. Do bigger.",
+            "Don't stop when you're tired. Stop when you're done.",
+            "Wake up with determination. Go to bed with satisfaction."
+        ];
+
+        // You'll need to replace these with actual image URLs or paths to your meme images
+        // For local paths, they should be relative to the static folder, e.g., '/static/assets/memes/meme1.jpg'
+        /* Predefined arrays are now removed
+        const memes = [
+            "/static/assets/images/memes/placeholder_meme_1.png", // Replace with actual meme paths/URLs
+            "/static/assets/images/memes/placeholder_meme_2.png",
+            "/static/assets/images/memes/placeholder_meme_3.png",
+            "/static/assets/images/memes/placeholder_meme_4.png",
+            "/static/assets/images/memes/placeholder_meme_5.png"
+        ];
+        */
+
+        async function fetchAndDisplayInspireContent() {
+            const quoteDisplay = $('#quote-display');
+            const memeDisplay = $('#meme-display');
+            const factDisplay = $('#fact-display'); // New element
+            const promptDisplay = $('#thought-prompt-display'); // New element
+            const refreshButton = $('#refresh-inspire-content');
+            const memeCategorySelect = $('#meme-category-select');
+
+            // Fade out old content for smoother transition
+            $('#quote-container, #meme-container, #fact-container, #prompt-container').animate({opacity: 0.3}, 300);
+
+            const originalButtonText = refreshButton.html(); 
+            refreshButton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Loading...');
+
+            const selectedMemeCategory = memeCategorySelect.val() || 'general';
+
+            try {
+                const response = await fetch(`/api/inspire?meme_category=${selectedMemeCategory}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                if (quoteDisplay.length) {
+                    quoteDisplay.html(`"${data.quote}" <br><em class="text-sm text-gray-400 block text-right mt-2">- ${data.author || 'Unknown'}</em>`);
+                }
+                if (promptDisplay.length) {
+                    promptDisplay.text(data.prompt || "What are you grateful for today?");
+                }
+                if (factDisplay.length) {
+                    factDisplay.text(data.fact || "Interesting facts are everywhere!");
+                }
+
+                if (memeDisplay.length) {
+                    memeDisplay.attr('src', data.meme_url);
+                    memeDisplay.off('error'); 
+                    memeDisplay.on('error', function() {
+                        $(this).attr('src', '/static/assets/images/placeholder_meme.png'); 
+                        showUIMessage("Meme Error", "Could not load the meme image. Displaying a placeholder.", "warning");
+                    });
+                }
+                // Update dropdown to reflect the category actually used by backend (if different due to fallback)
+                if (data.selected_meme_category) {
+                    memeCategorySelect.val(data.selected_meme_category);
+                }
+
+                // Fade in new content
+                $('#quote-container, #meme-container, #fact-container, #prompt-container').stop(true, true).animate({opacity: 1}, 500);
+
+            } catch (error) {
+                console.error("Error fetching inspire content:", error);
+                if (quoteDisplay.length) quoteDisplay.text("Could not load inspiration. Please try again!");
+                if (promptDisplay.length) promptDisplay.text("Take a moment to breathe deeply.");
+                if (factDisplay.length) factDisplay.text("Did you know that smiling is contagious?");
+                if (memeDisplay.length) memeDisplay.attr('src', '/static/assets/images/placeholder_meme.png');
+                showUIMessage("API Error", "Could not fetch new inspiration. Please check your connection or try again later.", "error", false);
+                // Still fade in the containers even if content is error message
+                $('#quote-container, #meme-container, #fact-container, #prompt-container').stop(true, true).animate({opacity: 1}, 300);
+            } finally {
+                refreshButton.prop('disabled', false).html(originalButtonText); 
+            }
+        }
+
+        // Event listener for the refresh button in Inspire Me panel
+        $(document).on('click', '#refresh-inspire-content', function() {
+            playSound("sound-click");
+            fetchAndDisplayInspireContent();
+        });
+
+        // Event listener for meme category change
+        $(document).on('change', '#meme-category-select', function() {
+            playSound("sound-click");
+            fetchAndDisplayInspireContent(); // Refresh content when category changes
+        });
+
+        // Event listener for when the Inspire tab itself is clicked (to load content if it's the first time)
+        // The main tab click handler already exists, we just need to ensure content is loaded if panel becomes active.
+        // Consider adding a check within the main tab click handler if this specific panel is targeted,
+        // or simply rely on the initial load and the refresh button.
+        // For simplicity, the initial load is done in $(document).ready(), and refresh button handles subsequent ones.
+        // If the inspire panel might be hidden initially and then shown, and needs fresh content upon first view (not just refresh):
+        $('button[data-target="inspire-panel"]').on('click', function() {
+            // Check if the panel is becoming active and if it needs an initial fetch beyond document.ready
+            // This might be redundant if fetchAndDisplayInspireContent() is light enough or if initial load is sufficient.
+            // For now, main load is on document.ready and refresh button.
+            // If content should ALWAYS refresh when tab is clicked:
+            // fetchAndDisplayInspireContent(); 
+        });
     }
 });

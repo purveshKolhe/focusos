@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error("Error fetching user data:", data.error);
             currentUser = 'UnknownUser_API_Error'; // Fallback for debugging
             currentUsername = 'Anonymous_API_Error'; // Fallback for debugging
-            if(typeof addNotification === 'function') { 
+            if(typeof addNotification === 'function') {
                 showToastNotification("User Data Error: Could not load your user details.", "error");
             }
         } else {
@@ -68,19 +68,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             // This function will be called once Firebase auth state is known.
             if (fbUser && fbUser.uid === apiUserId) {
                 console.log(`[Study Room] Firebase Auth Confirmed: UID ${fbUser.uid} matches API UserID ${apiUserId}. Initializing notifications.`);
-                if (typeof initializeGlobalNotificationSystem === 'function') {
+            if (typeof initializeGlobalNotificationSystem === 'function') {
                     initializeGlobalNotificationSystem(fbUser.uid); // Initialize with actual Firebase UID
 
-                    // Add a welcome notification specific to the study room, only once per session
-                    if (!sessionStorage.getItem('studyRoomWelcomeNotificationSent_' + currentRoom)) {
-                        const roomNameElement = document.querySelector('.room-name-center');
-                        const roomName = roomNameElement ? roomNameElement.textContent.trim() : 'the study room';
-                        if (typeof addNotification === 'function') {
+                // Add a welcome notification specific to the study room, only once per session
+                if (!sessionStorage.getItem('studyRoomWelcomeNotificationSent_' + currentRoom)) {
+                    const roomNameElement = document.querySelector('.room-name-center');
+                    const roomName = roomNameElement ? roomNameElement.textContent.trim() : 'the study room';
+                    if (typeof addNotification === 'function') {
                             addNotification('Study Room Joined', `Welcome to ${roomName}, ${apiDisplayName}!`, 'info');
-                        }
-                        sessionStorage.setItem('studyRoomWelcomeNotificationSent_' + currentRoom, 'true');
                     }
-                } else {
+                    sessionStorage.setItem('studyRoomWelcomeNotificationSent_' + currentRoom, 'true');
+                }
+            } else {
                     console.error("[Study Room] initializeGlobalNotificationSystem is not defined. CRITICAL: Ensure notifications.js is loaded BEFORE study_room.js.");
                 }
             } else {
@@ -101,34 +101,35 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
-            // Emit join_room, using apiDisplayName
-            socket.emit('join_room', {
-                room: currentRoom,
-                username: apiDisplayName
-            });
+            // Emit join_room, using apiUserId (Firebase UID) and apiDisplayName
+        socket.emit('join_room', {
+            room: currentRoom,
+                user_id: apiUserId,      // Send Firebase UID as user_id
+                display_name: apiDisplayName // Send display name separately
+        });
 
             // Initialize other socket event listeners that might have been deferred
-            // Wait for socket connection to be established
-            socket.on('connect', () => {
-                console.log('[Socket] Connected to server for study room:', currentRoom);
-                fetchAndRenderParticipants();
-            });
+        // Wait for socket connection to be established
+        socket.on('connect', () => {
+            console.log('[Socket] Connected to server for study room:', currentRoom);
+            fetchAndRenderParticipants();
+        });
 
-            socket.on('status', function(data) {
-                console.log('[Socket] Received status:', data);
-                fetchAndRenderParticipants(); // Update participants on status changes (join/leave)
-                const chatMessages = document.getElementById('chat-messages');
-                if (chatMessages) {
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = 'chat-message text-gray-400 text-center my-2';
-                    msgDiv.textContent = data.msg;
-                    chatMessages.appendChild(msgDiv);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
+        socket.on('status', function(data) {
+            console.log('[Socket] Received status:', data);
+            fetchAndRenderParticipants(); // Update participants on status changes (join/leave)
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-message text-gray-400 text-center my-2';
+                msgDiv.textContent = data.msg;
+                chatMessages.appendChild(msgDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
                 // Use global notification for room updates (this relies on addNotification working)
                 if (apiUserId && !apiUserId.startsWith('UnknownUser_') && fbUser && fbUser.uid === apiUserId) { // Only if notifications are expected to work
-                    if (typeof addNotification === 'function') {
-                        addNotification('Room Update', data.msg, 'info');
+            if (typeof addNotification === 'function') {
+                addNotification('Room Update', data.msg, 'info');
                     }
                 } else {
                      if (typeof showToastNotification === 'function') {
@@ -532,14 +533,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         leaveRoomBtn.addEventListener('click', function() {
             console.log('[Frontend] Leave room button clicked');
             console.log('[Frontend] Current room:', currentRoom);
-            console.log('[Frontend] Current user:', currentUser);
+            console.log('[Frontend] Current user (UID for leave event):', currentUser); // currentUser is Firebase UID
             
             if (confirm('Are you sure you want to leave the room?')) {
                 console.log('[Frontend] User confirmed leaving room');
-                // Emit leave_room event
+                // Emit leave_room event with user_id (Firebase UID)
                 socket.emit('leave_room', { 
                     room: currentRoom, 
-                    username: currentUser 
+                    user_id: currentUser // Send Firebase UID as user_id
                 }, (response) => {
                     console.log('[Frontend] Leave room response:', response);
                 });
@@ -549,120 +550,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
-
-    // Initialize Daphinix chat
-    const myInput = document.getElementById('myInput');
-    const sendButton = document.getElementById('send-button');
-    const responseArea = document.getElementById('responseArea');
-    const clearChatButton = document.getElementById('clear-chat');
-    const uploadImageBtn = document.getElementById('upload-image-btn');
-    const imageUpload = document.getElementById('image-upload');
-    const imagePreview = document.getElementById('image-preview');
-    const imagePreviewContainer = document.getElementById('image-preview-container');
-    const removeImageBtn = document.getElementById('remove-image-btn');
-
-    // Send message function
-    async function sendMessage() {
-        const message = myInput ? myInput.value.trim() : '';
-        const hasImage = imagePreview && imagePreview.src && imagePreview.src !== window.location.href; // Check if src is not empty and not just the base URL
-        
-        if (!message && !hasImage) return;
-
-        if(myInput) myInput.value = '';
-        if(imagePreview) imagePreview.src = '';
-        if(imagePreviewContainer) imagePreviewContainer.style.display = 'none';
-
-        // Show typing indicator
-        if(responseArea){
-        const typingIndicator = document.createElement('div');
-        typingIndicator.className = 'typing-indicator';
-        typingIndicator.innerHTML = '<span></span><span></span><span></span>';
-        responseArea.appendChild(typingIndicator);
-        responseArea.scrollTop = responseArea.scrollHeight;
-        }
-
-        try {
-            const formData = new FormData();
-            formData.append('message', message);
-            formData.append('memory', JSON.stringify(daphinixMemory));
-
-            if (hasImage && imageUpload && imageUpload.files && imageUpload.files[0]) {
-                formData.append('image', imageUpload.files[0]);
-            }
-
-            const apiEndpoint = hasImage ? '/api/chat_with_image' : '/api/chat';
-            const fetchOptions = { method: 'POST', body: formData };
-
-            if (!hasImage) {
-                 // For text-only, send as JSON
-                delete fetchOptions.body;
-                fetchOptions.headers = { 'Content-Type': 'application/json' };
-                fetchOptions.body = JSON.stringify({ message: message, memory: daphinixMemory });
-            }
-
-            const response = await fetch(apiEndpoint, fetchOptions);
-
-            const data = await response.json();
-            
-            if (responseArea && responseArea.querySelector('.typing-indicator')) {
-                responseArea.querySelector('.typing-indicator').remove();
-            }
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-        } catch (error) {
-            console.error('Error:', error);
-            if (responseArea && responseArea.querySelector('.typing-indicator')) {
-                responseArea.querySelector('.typing-indicator').remove();
-            }
-        }
-    }
-
-    // Event listeners
-    if (sendButton) sendButton.addEventListener('click', sendMessage);
-    if (myInput) {
-    myInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-    }
-
-
-    if (clearChatButton) {
-    clearChatButton.addEventListener('click', () => {
-        if(responseArea) responseArea.innerHTML = '';
-        clearDaphinixMemory();
-    });
-    }
-
-    if (uploadImageBtn && imageUpload) uploadImageBtn.addEventListener('click', () => imageUpload.click());
-
-    if (imageUpload) {
-    imageUpload.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-            if (file && imagePreview && imagePreviewContainer) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-                imagePreviewContainer.style.display = 'flex';
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-    }
-
-    if (removeImageBtn && imagePreview && imagePreviewContainer && imageUpload) {
-    removeImageBtn.addEventListener('click', () => {
-        imagePreview.src = '';
-        imagePreviewContainer.style.display = 'none';
-        imageUpload.value = '';
-    });
-    }
-
 
     // Load user data and stats
     async function loadUserData() {
@@ -829,8 +716,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
 
     window.addEventListener('beforeunload', function() {
-        if (socket && currentRoom && currentUser) {
-        socket.emit('leave_room', { room: currentRoom, username: currentUser });
+        if (socket && currentRoom && currentUser) { // currentUser is Firebase UID
+            // For beforeunload, the server relies on the 'disconnect' event primarily.
+            // Explicitly emitting 'leave_room' here can be redundant if disconnect is handled robustly,
+            // and might not always complete before the tab closes.
+            // However, if desired for an immediate attempt:
+            // socket.emit('leave_room', { room: currentRoom, user_id: currentUser });
+            console.log('[Frontend] beforeunload: User (UID: '+ currentUser +') is leaving room ' + currentRoom + '. Server will handle via disconnect.');
         }
     });
 
@@ -855,13 +747,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Add handler for disconnect event
     socket.on('disconnect', function() {
         console.log('[Frontend] Socket disconnected');
-        if (socket && currentRoom && currentUser) {
-            console.log('[Frontend] Attempting to leave room on disconnect');
-            socket.emit('leave_room', { 
-                room: currentRoom, 
-                username: currentUser 
-            });
-        }
+        // No need to emit leave_room here, server handles disconnect event and cleans up using active_sessions.
+        // if (socket && currentRoom && currentUser) { // currentUser is Firebase UID
+        //     console.log('[Frontend] Attempting to leave room on disconnect via client emit - redundant if server handles disconnect well');
+        //     socket.emit('leave_room', { 
+        //         room: currentRoom, 
+        //         user_id: currentUser 
+        //     });
+        // }
     });
 
     // Rules Modal Logic for Study Room
@@ -937,6 +830,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             if (typeof addNotification === 'function') addNotification("Focus mode disabled", "info");
             playSound('sound-click');
+        });
+    }
+
+    if (uploadImageBtn && imageUpload) {
+        const newUploadImageBtn = uploadImageBtn.cloneNode(true);
+        if(uploadImageBtn.parentNode) uploadImageBtn.parentNode.replaceChild(newUploadImageBtn, uploadImageBtn);
+        newUploadImageBtn.addEventListener('click', () => {
+            // Ensure we get the LATEST reference to imageUpload, in case it was also cloned.
+            const currentImageUpload = document.getElementById('image-upload');
+            if (currentImageUpload) {
+                currentImageUpload.click();
+            }
         });
     }
 });
@@ -1076,10 +981,17 @@ async function sendToDaphinix(message, imageFile = null) {
 
             const botMsgDiv = document.createElement('div');
             botMsgDiv.className = 'mb-4';
-            botMsgDiv.textContent = `Daphinix: ${data.response}`; // Use textContent for safety
+            // Use marked.parse for markdown, then let MathJax handle LaTeX
+            botMsgDiv.innerHTML = `<strong>Daphinix:</strong> ${marked.parse(data.response)}`; 
             responseArea.appendChild(botMsgDiv);
             
             responseArea.scrollTop = responseArea.scrollHeight;
+
+            // Typeset MathJax content
+            if (window.MathJax) {
+                MathJax.typesetPromise([botMsgDiv])
+                    .catch((err) => console.error('MathJax typesetting error:', err));
+            }
         }
         
 
@@ -1097,91 +1009,6 @@ async function sendToDaphinix(message, imageFile = null) {
         if(typeof addNotification === 'function') addNotification("Daphinix AI", "Error communicating with Daphinix. Please try again.", "error");
     }
 }
-
-// Initialize Daphinix Event Handlers (moved out of DOMContentLoaded to avoid re-binding if script runs multiple times)
-function initializeDaphinixHandlers() {
-    const sendButton = document.getElementById('send-button');
-    const myInput = document.getElementById('myInput');
-    const uploadImageBtn = document.getElementById('upload-image-btn');
-    const imageUpload = document.getElementById('image-upload');
-    const removeImageBtn = document.getElementById('remove-image-btn');
-    const clearChatBtn = document.getElementById('clear-chat');
-    const imagePreview = document.getElementById('image-preview');
-    const imagePreviewContainer = document.getElementById('image-preview-container');
-
-
-    if (sendButton) {
-        // Clone and replace to remove old listeners if any
-        const newSendButton = sendButton.cloneNode(true);
-        if(sendButton.parentNode) sendButton.parentNode.replaceChild(newSendButton, sendButton);
-        newSendButton.addEventListener('click', function() {
-            const message = myInput ? myInput.value.trim() : '';
-            const imageFile = imageUpload && imageUpload.files.length > 0 ? imageUpload.files[0] : null;
-        if (message || imageFile) {
-            sendToDaphinix(message, imageFile);
-        }
-    });
-    }
-
-    if (myInput) {
-        const newMyInput = myInput.cloneNode(true);
-        if(myInput.parentNode) myInput.parentNode.replaceChild(newMyInput, myInput);
-        newMyInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-                // Get the potentially new sendButton if it was replaced
-                const currentSendButton = document.getElementById('send-button'); 
-                if (currentSendButton) currentSendButton.click(); 
-            }
-        });
-    }
-
-    if (uploadImageBtn && imageUpload) {
-        const newUploadImageBtn = uploadImageBtn.cloneNode(true);
-        if(uploadImageBtn.parentNode) uploadImageBtn.parentNode.replaceChild(newUploadImageBtn, uploadImageBtn);
-        newUploadImageBtn.addEventListener('click', () => imageUpload.click());
-    }
-    
-    if (imageUpload) {
-        const newImageUpload = imageUpload.cloneNode(true);
-        if(imageUpload.parentNode) imageUpload.parentNode.replaceChild(newImageUpload, imageUpload);
-        newImageUpload.addEventListener('change', function() {
-        const file = this.files[0];
-            if (file && imagePreview && imagePreviewContainer) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                    imagePreview.src = e.target.result;
-                    imagePreviewContainer.style.display = 'flex';
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-    }
-
-
-    if (removeImageBtn && imagePreview && imagePreviewContainer && imageUpload) {
-        const newRemoveImageBtn = removeImageBtn.cloneNode(true);
-        if(removeImageBtn.parentNode) removeImageBtn.parentNode.replaceChild(newRemoveImageBtn, removeImageBtn);
-        newRemoveImageBtn.addEventListener('click', function() {
-            imageUpload.value = '';
-            imagePreview.src = '';
-            imagePreviewContainer.style.display = 'none';
-        });
-    }
-
-
-    if (clearChatBtn) {
-        const newClearChatBtn = clearChatBtn.cloneNode(true);
-        if(clearChatBtn.parentNode) clearChatBtn.parentNode.replaceChild(newClearChatBtn, clearChatBtn);
-        newClearChatBtn.addEventListener('click', () => {
-            const responseArea = document.getElementById('responseArea');
-            if(responseArea) responseArea.innerHTML = '';
-            if(typeof addNotification === 'function') addNotification("Daphinix AI", "Chat cleared.", "info");
-        });
-    }
-}
-initializeDaphinixHandlers(); // Call it once globally
-
 
 function updateTimerDisplay(timeLeft) {
     const minutes = Math.floor(timeLeft / 60);

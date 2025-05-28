@@ -1,6 +1,21 @@
+from dotenv import load_dotenv
+import os # Ensure os is imported early if Path is used with it indirectly
+from pathlib import Path # For robust path construction
+
+# Load environment variables from .env file located in the same directory as app.py
+# This is more robust than relying on the current working directory.
+dotenv_path = Path(__file__).resolve().parent / '.env'
+load_dotenv(dotenv_path=dotenv_path)
+
+# Remove eventlet monkey patching for Gunicorn compatibility
+# import eventlet
+# eventlet.monkey_patch()
+
+import logging
+logging.basicConfig(level=logging.INFO)
+
 from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, flash, session
 import google.generativeai as genai
-import os
 from flask_cors import CORS
 import base64
 import re
@@ -8,6 +23,7 @@ import random
 from io import BytesIO
 from PIL import Image
 import json
+import requests # Added for external API calls
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from firebase_config import initialize_firebase, get_user_data, save_user_data, get_chat_history, save_chat_history, get_todo_list, save_todo_list
@@ -17,10 +33,25 @@ import uuid
 from flask_socketio import SocketIO, join_room, leave_room, emit, disconnect
 import threading
 import time
+import traceback
+
+# Gamification Logic
+import gamification_logic
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)  # Enable CORS for all routes
-app.secret_key = os.urandom(24)  # Required for session management
+
+# --- Secret Key Configuration ---
+# IMPORTANT: For session persistence across restarts/deployments,
+# set a fixed SECRET_KEY environment variable.
+# Generate a good one with: python -c "import os; print(os.urandom(24).hex())"
+SECRET_KEY_FALLBACK = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', SECRET_KEY_FALLBACK)
+
+if app.secret_key == SECRET_KEY_FALLBACK:
+    print("WARNING: SECRET_KEY environment variable not set. Using a temporary secret key.")
+    print("Sessions will NOT persist across application restarts or redeployments.")
+    print("For production, set a strong, static SECRET_KEY environment variable.")
 
 # Initialize Firebase
 try:
@@ -48,58 +79,56 @@ def login():
         password = request.form.get('password')
         remember = request.form.get('remember')
         print(f"[LOGIN ATTEMPT] Username input: {username_input}")
-
-        users_ref = db.collection('users').where('username', '==', username_input).limit(1).stream()
-        user_doc_snapshot = next(users_ref, None)
-        
-        if user_doc_snapshot:
-            print(f"[LOGIN] Found user document in Firestore with ID: {user_doc_snapshot.id}")
-            user_data_from_firestore = user_doc_snapshot.to_dict()
-            print(f"[LOGIN] User data from Firestore: {user_data_from_firestore}")
-            
-            if check_password_hash(user_data_from_firestore.get('password', ''), password):
-                print("[LOGIN] Password hash matches.")
-                firebase_uid = user_data_from_firestore.get('uid') 
-                display_username = user_data_from_firestore.get('username')
-                print(f"[LOGIN] Retrieved Firebase UID from Firestore: {firebase_uid}")
-                print(f"[LOGIN] Retrieved display_username from Firestore: {display_username}")
-
-                if not firebase_uid:
-                    print("[LOGIN ERROR] User record is incomplete (missing uid field).")
-                    flash('User record is incomplete. Cannot log in.', 'error')
-                    return render_template('auth/login.html')
-
-                session['user_id'] = firebase_uid 
-                session['username'] = display_username 
-                print(f"[LOGIN] Set session['user_id'] = {session['user_id']}")
-                print(f"[LOGIN] Set session['username'] = {session['username']}")
-                
-                # Always try to create and store the custom token for client-side auth
-                try:
-                    custom_token_bytes = firebase_admin_auth.create_custom_token(firebase_uid)
-                    custom_token_str = custom_token_bytes.decode('utf-8')
-                    session['firebase_custom_token'] = custom_token_str
-                    print(f"[LOGIN] Successfully created and decoded custom token for UID: {firebase_uid}")
-                except Exception as e:
-                    print(f"[LOGIN ERROR] Error creating custom token for {firebase_uid}: {str(e)}")
-                    # If token creation fails, it's a problem for client-side auth, but login might still be "successful" in a server-session sense.
-                    # We can flash a more specific error or decide if this should prevent login entirely.
-                    # For now, let's flash and proceed, client-side will handle lack of immediate Firebase auth.
-                    flash('Login successful, but could not prepare secure client session. Some features might be limited.', 'warning')
-
-                if remember:
-                    session.permanent = True
-                    print(f"[LOGIN] Session set to permanent for user {firebase_uid}")
-                
-                flash('Successfully logged in!', 'success')
-                return redirect(url_for('index'))
-            else:  # Corresponds to: if check_password_hash(...)
-                print("[LOGIN ERROR] Password hash does not match.")
+        try:
+            users_ref = db.collection('users').where('username', '==', username_input).limit(1).stream()
+            user_doc_snapshot = next(users_ref, None)
+            if user_doc_snapshot:
+                print(f"[LOGIN] Found user document in Firestore with ID: {user_doc_snapshot.id}")
+                user_data_from_firestore = user_doc_snapshot.to_dict()
+                print(f"[LOGIN] User data from Firestore: {user_data_from_firestore}")
+                if check_password_hash(user_data_from_firestore.get('password', ''), password):
+                    print("[LOGIN] Password hash matches.")
+                    firebase_uid = user_data_from_firestore.get('uid')
+                    display_username = user_data_from_firestore.get('username')
+                    print(f"[LOGIN] Retrieved Firebase UID from Firestore: {firebase_uid}")
+                    print(f"[LOGIN] Retrieved display_username from Firestore: {display_username}")
+                    if not firebase_uid:
+                        print("[LOGIN ERROR] User record is incomplete (missing uid field).")
+                        flash('User record is incomplete. Cannot log in.', 'error')
+                        return render_template('auth/login.html')
+                    session['user_id'] = firebase_uid
+                    session['username'] = display_username
+                    print(f"[LOGIN] Set session['user_id'] = {session['user_id']}")
+                    print(f"[LOGIN] Set session['username'] = {session['username']}")
+                    try:
+                        custom_token_bytes = firebase_admin_auth.create_custom_token(firebase_uid)
+                        custom_token_str = custom_token_bytes.decode('utf-8')
+                        session['firebase_custom_token'] = custom_token_str
+                        print(f"[LOGIN] Successfully created and decoded custom token for UID: {firebase_uid}")
+                    except Exception as e:
+                        print(f"[LOGIN ERROR] Error creating custom token for {firebase_uid}: {str(e)}")
+                        import traceback
+                        print(traceback.format_exc())
+                        logging.exception("Exception in custom token creation")
+                        flash('Login successful, but could not prepare secure client session. Some features might be limited.', 'warning')
+                    if remember:
+                        session.permanent = True
+                        print(f"[LOGIN] Session set to permanent for user {firebase_uid}")
+                    flash('Successfully logged in!', 'success')
+                    return redirect(url_for('index'))
+                else:
+                    print("[LOGIN ERROR] Password hash does not match.")
+                    flash('Invalid username or password.', 'error')
+            else:
+                print(f"[LOGIN ERROR] No user found in Firestore with username: {username_input}")
                 flash('Invalid username or password.', 'error')
-        else:  # Corresponds to: if user_doc_snapshot
-            print(f"[LOGIN ERROR] No user found in Firestore with username: {username_input}")
-            flash('Invalid username or password.', 'error')
-    
+        except Exception as e:
+            import traceback
+            print(f"[LOGIN ERROR] Exception occurred: {str(e)}")
+            print(traceback.format_exc())
+            logging.exception("Exception in login route")
+            flash('An error occurred during login. Please try again.', 'error')
+            return render_template('auth/login.html')
     return render_template('auth/login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -217,86 +246,271 @@ def index():
 @login_required
 def get_user_progress():
     try:
-        user_id = session['user_id'] # This is now consistently Firebase UID (or username as UID)
-        user_data = get_user_data(user_id) # Fetches from Firestore using UID/username
-        
-        if not user_data: # Should ideally not happen if registration is successful
-            # Minimal data if somehow user_id exists in session but not DB
-            # Or, if this is a Google user first time, create their Firestore doc.
-            # For Google users, user_id is Firebase UID.
-            # Check if they are a Google user by checking if firebase_custom_token was NOT in session
-            # This distinction is a bit tricky here. Assuming user_id is the definitive key.
-            
-            is_new_google_user = False # Placeholder for more robust check
+        user_id = session['user_id']
+        user_data = get_user_data(user_id)
+        db_client = initialize_firebase() # Ensure db client is available
+        gamification_settings_doc = gamification_logic.get_gamification_config_ref(db_client).get()
+        gamification_settings = gamification_settings_doc.to_dict() if gamification_settings_doc.exists else {}
+
+        if not user_data:
+            is_new_google_user = False
             try:
                 fb_auth_user = firebase_admin_auth.get_user(user_id)
                 if any(provider.provider_id == 'google.com' for provider in fb_auth_user.provider_data):
                     is_new_google_user = True
             except Exception:
-                pass # Not a Firebase auth user or error, proceed with Firestore check
+                pass
 
-            if is_new_google_user and not user_data:
+            if is_new_google_user:
                  print(f"Creating Firestore record for new Google user: {user_id}")
                  user_data = {
                     'uid': user_id,
-                    'username': session.get('username', user_id), # Use display name from session
-                    'email': firebase_admin_auth.get_user(user_id).email, # Get email from Firebase Auth
+                    'username': session.get('username', user_id),
+                    'email': firebase_admin_auth.get_user(user_id).email,
                     'progress': {
                         'level': 1, 'xp': 0, 'total_time': 0, 'streak': 0, 'sessions': 0,
-                        'badges': {'bronze': False, 'silver': False, 'gold': False}
+                        'badges': [], 'lastStudyDay': None, 'activeQuests': [], 'completedQuests': []
+                    },
+                    'leaderboardData': { # Initialize leaderboard data
+                        'username': session.get('username', user_id),
+                        'totalXp': 0,
+                        'currentStreak': 0,
+                        'level': 1
                     },
                     'created_at': datetime.utcnow()
                  }
+                 gamification_logic.assign_new_quests(user_data['progress'], gamification_settings)
+                 gamification_logic.update_leaderboard_data(user_data) # ensure leaderboard data is consistent
                  save_user_data(user_id, user_data)
-            elif not user_data: # If still no user_data (e.g. form user missing doc for some reason)
+            else:
+                 # This case implies not a new Google user, but still no user_data found initially.
+                 # This might be a regular new user or an edge case.
+                 # Initialize with minimal defaults.
                  user_data = {
+                    'uid': user_id, # Ensure UID is part of the structure
+                    'username': session.get('username', user_id),
                     'progress': {
                         'level': 1, 'xp': 0, 'total_time': 0, 'streak': 0, 'sessions': 0,
-                        'badges': {'bronze': False, 'silver': False, 'gold': False}
+                        'badges': [], 'lastStudyDay': None, 'activeQuests': [], 'completedQuests': []
+                    },
+                     'leaderboardData': {
+                        'username': session.get('username', user_id),
+                        'totalXp': 0,
+                        'currentStreak': 0,
+                        'level': 1
                     }
                  }
-                 # Not saving here, as it's unexpected for a form user to be in session without DB entry.
-                 # save_user_data(user_id, user_data)
+                 # Optionally save this minimal structure if it's truly a new/uninitialized user for whom
+                 # an entry should exist. Consider implications. For now, let's ensure quests are assigned.
+                 gamification_logic.assign_new_quests(user_data['progress'], gamification_settings)
+                 gamification_logic.update_leaderboard_data(user_data)
+                 # save_user_data(user_id, user_data) # Decided not to save here, GET should not always write for non-existent.
+        else:
+            # Ensure all gamification fields exist for existing user_data
+            user_data['progress'].setdefault('level', 1)
+            user_data['progress'].setdefault('xp', 0)
+            user_data['progress'].setdefault('total_time', 0)
+            user_data['progress'].setdefault('streak', 0)
+            user_data['progress'].setdefault('sessions', 0)
+            
+            # Ensure badges is an array of strings (badge IDs)
+            current_badges = user_data['progress'].get('badges')
+            if not isinstance(current_badges, list):
+                if isinstance(current_badges, dict): # Old format {'bronze': True, 'silver': False}
+                    user_data['progress']['badges'] = [badge_id for badge_id, earned in current_badges.items() if earned]
+                else: # Unknown format or None, initialize as empty list
+                    user_data['progress']['badges'] = [] 
+            else:
+                 user_data['progress'].setdefault('badges', []) # Ensure it exists if it was None
 
-        
-        # Clean up session history older than 30 days
+            user_data['progress'].setdefault('lastStudyDay', None)
+            user_data['progress'].setdefault('activeQuests', [])
+            user_data['progress'].setdefault('completedQuests', [])
+            
+            if 'leaderboardData' not in user_data: # Initialize if missing
+                user_data['leaderboardData'] = {
+                    'username': user_data.get('username', user_id),
+                    'totalXp': user_data['progress'].get('xp',0),
+                    'currentStreak': user_data['progress'].get('streak',0),
+                    'level': user_data['progress'].get('level',1)
+                }
+
+            # Assign new quests if needed when user data is fetched
+            newly_assigned_quests = gamification_logic.assign_new_quests(user_data['progress'], gamification_settings)
+            if newly_assigned_quests:
+                 gamification_logic.update_leaderboard_data(user_data) # Update if quests changed anything indirectly
+                 save_user_data(user_id, user_data) # Save if quests were assigned
+
+        # Clean up session history older than 30 days (existing logic)
         if 'sessionHistory' in user_data.get('progress', {}):
             thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
             user_data['progress']['sessionHistory'] = [
                 s for s in user_data['progress']['sessionHistory']
-                if datetime.fromisoformat(s.get('date', '2000-01-01')) > thirty_days_ago
+                if s.get('date') and isinstance(s['date'], str) and datetime.fromisoformat(s['date'].replace('Z', '+00:00')) > thirty_days_ago
             ]
         
-        # Return the UID as 'username' field because client-side uses data.username as currentUserId
         return jsonify({
-            'username': user_id, # This is the Firebase UID (or username acting as UID)
-            'display_username': user_data.get('username', user_id), # Actual display name
-            'progress': user_data.get('progress', {})
+            'username': user_id, 
+            'display_username': user_data.get('username', user_id),
+            'progress': user_data.get('progress', {}),
+            'gamification_settings': { # Send badge definitions for frontend display
+                'badges': gamification_settings.get('badges', {}),
+                'quests': gamification_settings.get('quests', {}),
+                'leveling': gamification_settings.get('leveling', {'baseXpForLevelUp': 100}) # Ensure leveling is sent
+            }
         })
     except Exception as e:
         print(f"Error getting user data for {session.get('user_id')}: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/user_data', methods=['POST'])
 @login_required
 def save_user_progress():
     try:
-        user_id = session['user_id'] # This is Firebase UID
-        data = request.json
-        # Firestore data is keyed by user_id (UID)
-        # Ensure the data being saved is nested under 'progress' if that's the structure
-        # current save_user_data(user_id, {'progress': data}) seems to do this.
-        user_doc = get_user_data(user_id)
-        if not user_doc: # Safety check, should exist
-            user_doc = {} # Create a base if somehow missing
-        user_doc['progress'] = data # Update the progress field
-        user_doc['uid'] = user_id # Ensure UID is present
-        user_doc.setdefault('username', user_id) # Ensure username display name is present
+        user_id = session['user_id']
+        client_data_payload = request.json # This is the full object client sends, typically containing a 'progress' field
         
-        result = save_user_data(user_id, user_doc)
-        return jsonify({'status': 'success' if result else 'error'})
+        db_client = initialize_firebase()
+        user_doc_ref = db_client.collection('users').document(user_id)
+        user_doc_snapshot = user_doc_ref.get()
+        
+        gamification_settings_doc = gamification_logic.get_gamification_config_ref(db_client).get()
+        gamification_settings = gamification_settings_doc.to_dict() if gamification_settings_doc.exists else {}
+
+        current_user_document_data = {}
+        if user_doc_snapshot.exists:
+            current_user_document_data = user_doc_snapshot.to_dict()
+        else:
+            # Should ideally not happen if GET /api/user_data was called first on client load
+            # Initialize with defaults if creating fresh
+            current_user_document_data = {
+                'uid': user_id,
+                'username': session.get('username', user_id), # Use session username or UID
+                'email': '', # Placeholder, ideally fetch from auth if available
+                'created_at': datetime.utcnow(),
+                'progress': {},
+                'leaderboardData': {}
+            }
+        
+        # Ensure 'progress' and 'leaderboardData' keys exist
+        if 'progress' not in current_user_document_data: current_user_document_data['progress'] = {}
+        if 'leaderboardData' not in current_user_document_data: current_user_document_data['leaderboardData'] = {}
+
+        user_progress = current_user_document_data['progress']
+
+        # Extract progress data from client payload
+        client_progress_update = client_data_payload.get('progress', {})
+        event_type_from_client = client_data_payload.get('event_type')
+
+        # Smartly merge client_progress_update into user_progress
+        # Client is generally authoritative for its current XP and Level display during a sync.
+        # Server will recalculate and override these if an event (like session_completed) occurs.
+        if 'xp' in client_progress_update:
+            user_progress['xp'] = client_progress_update['xp']
+        if 'level' in client_progress_update:
+            user_progress['level'] = client_progress_update['level']
+
+        # For total_time, sessions, and sessionHistory, the server should be more authoritative
+        # especially during general syncs. These are primarily modified by server-side event processing.
+        
+        # If client sends badges, merge them. This assumes client badge list is for display consistency.
+        # Actual badge awarding is server-side.
+        if 'badges' in client_progress_update: 
+            user_progress['badges'] = client_progress_update.get('badges', user_progress.get('badges', []))
+
+        # --- Server-Side Gamification Logic Application ---
+        event_data = client_data_payload.get('event_data', {})     # e.g., {"duration": 25}
+
+        newly_awarded_badges = []
+        leveled_up = False
+        all_completed_quest_titles = []
+
+        if event_type_from_client == "session_completed":
+            duration_minutes = event_data.get("duration", 0)
+            if duration_minutes > 0:
+                # Server calculates XP for this session
+                xp_earned_this_session = gamification_logic.calculate_xp_for_session(duration_minutes, gamification_settings)
+                user_progress['xp'] = user_progress.get('xp', 0) + xp_earned_this_session
+                
+                # Server updates total time and session count
+                user_progress['total_time'] = user_progress.get('total_time', 0) + duration_minutes
+                user_progress['sessions'] = user_progress.get('sessions', 0) + 1
+
+                # Add to session history (server-authoritative part)
+                session_entry = {
+                    'type': 'work', # Assuming session_completed is always 'work'
+                    'duration': duration_minutes,
+                    'date': datetime.now(timezone.utc).isoformat(),
+                    'xp_earned': xp_earned_this_session # Store XP earned for this session
+                }
+                if 'sessionHistory' not in user_progress or not isinstance(user_progress['sessionHistory'], list):
+                    user_progress['sessionHistory'] = []
+                user_progress['sessionHistory'].append(session_entry)
+                # Optional: Keep session history sorted and trimmed (already handled in GET, but can be done here too)
+                user_progress['sessionHistory'].sort(key=lambda x: x.get('date', ''), reverse=True)
+                user_progress['sessionHistory'] = user_progress['sessionHistory'][:50] # Keep last 50, for example
+
+            # Update streak (always do this if a session was completed)
+            gamification_logic.update_study_streak(user_progress)
+
+            # Update quest progress based on session completion
+            quest_event_info_session = {'type': 'pomodoro_session_completed', 'value': 1}
+            completed_quests_session = gamification_logic.update_quest_progress(user_progress, gamification_settings, quest_event_info_session)
+            
+            quest_event_info_time = {'type': 'study_time_added', 'value': duration_minutes}
+            completed_quests_time = gamification_logic.update_quest_progress(user_progress, gamification_settings, quest_event_info_time)
+
+            # Combine completed quest titles (if any)
+            all_completed_quest_titles = list(set(completed_quests_session + completed_quests_time))
+            if all_completed_quest_titles:
+                 # Notify client about completed quests (details below)
+                 pass # Will add flash or return data later
+
+            # Check for level up after XP changes from quests or session
+            leveled_up = gamification_logic.check_for_levelup(user_progress, gamification_settings)
+            # if leveled_up: notify client
+
+            # Check for badges
+            session_event_info = {
+                'type': 'session_complete', 
+                'duration': duration_minutes,
+                'time_completed_hour_utc': datetime.now(timezone.utc).hour
+            }
+            newly_awarded_badges = gamification_logic.check_and_award_badges(user_progress, gamification_settings, session_event_info)
+            # if newly_awarded_badges: notify client
+
+        # Ensure essential progress fields have default values after merge and logic
+        user_progress.setdefault('level', 1)
+        user_progress.setdefault('xp', 0)
+        user_progress.setdefault('total_time', 0)
+        user_progress.setdefault('streak', 0)
+        user_progress.setdefault('sessions', 0)
+        user_progress.setdefault('badges', [])
+        user_progress.setdefault('lastStudyDay', None) # 'YYYY-MM-DD'
+        user_progress.setdefault('activeQuests', [])
+        user_progress.setdefault('completedQuests', [])
+        if 'sessionHistory' not in user_progress or not isinstance(user_progress['sessionHistory'], list):
+            user_progress['sessionHistory'] = []
+        
+        current_user_document_data['progress'] = user_progress
+        
+        # Update denormalized leaderboard data
+        gamification_logic.update_leaderboard_data(current_user_document_data)
+        
+        save_user_data(user_id, current_user_document_data) 
+        
+        response_data = {'status': 'success', 'progress': current_user_document_data['progress']}
+        if newly_awarded_badges: response_data['new_badges'] = newly_awarded_badges
+        if leveled_up: response_data['leveled_up_to'] = user_progress['level']
+        if all_completed_quest_titles: response_data['completed_quests'] = all_completed_quest_titles
+        
+        return jsonify(response_data)
     except Exception as e:
         print(f"Error saving user data for {session.get('user_id')}: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/chat_history', methods=['GET'])
@@ -371,8 +585,8 @@ def save_user_todo_list():
         return jsonify({'error': str(e)}), 500
 
 # Configure Google Generative AI with API key
-# (API key provided by user)
-genai.configure(api_key="AIzaSyByYY4QBJLU3Bu_C-VaT52AR2LzU2-p19c")
+api_key_gemini = "AIzaSyByYY4QBJLU3Bu_C-VaT52AR2LzU2-p19c"
+genai.configure(api_key=api_key_gemini)
 
 # Set up the model
 generation_config = {
@@ -389,16 +603,16 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
 ]
 
-# Initialize text-only model
+# Initialize text-only model (using model name from old.py)
 text_model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
+    model_name="gemini-1.5-flash", # Updated to gemini-1.5-flash as requested
     generation_config=generation_config,
     safety_settings=safety_settings
 )
 
-# Initialize multimodal model for image processing
+# Initialize multimodal model for image processing (using model name from old.py)
 vision_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-flash", # Using primary vision model from old.py
     generation_config=generation_config,
     safety_settings=safety_settings
 )
@@ -462,7 +676,7 @@ Don't be sassy. Be KIND AND FRIENDLY AND SUPPORTIVE.
 """
 
 def format_latex(text):
-    """Format LaTeX expressions with proper escaping."""
+    """Format LaTeX expressions with proper escaping. This version is from old.py."""
     replacements = {
         r'\int': r'\\int',
         r'\dfrac': r'\\dfrac',
@@ -511,41 +725,23 @@ def format_latex(text):
         r'\oplus': r'\\oplus',
         r'\otimes': r'\\otimes'
     }
-    
     for old, new in replacements.items():
         text = text.replace(old, new)
-    
     return text
 
 def detect_math_question(user_message):
     """Check if the message appears to be a math question."""
     math_patterns = [
-        r'solve\s+for',
-        r'calculate',
-        r'compute',
-        r'find\s+the\s+(value|sum|product|quotient|derivative|integral)',
-        r'what\s+is\s+[\d\+\-\*\/\^\(\)]+',
-        r'evaluate',
-        r'integrate',
-        r'differentiate',
-        r'\d+\s*[\+\-\*\/\^]\s*\d+',
-        r'equation',
-        r'formula',
-        r'algebra',
-        r'calculus',
-        r'theorem',
-        r'prove',
-        r'matrix',
-        r'vector',
-        r'probability',
-        r'statistics'
+        r'solve\\s+for', r'calculate', r'compute',
+        r'find\\s+the\\s+(value|sum|product|quotient|derivative|integral)',
+        r'what\\s+is\\s+[\\d\\+\\-\\*\\/\\^\\(\\)]+', r'evaluate', r'integrate', r'differentiate',
+        r'\\d+\\s*[\\+\\-\\*\\/\\^]\\s*\\d+', r'equation', r'formula', r'algebra', r'calculus',
+        r'theorem', r'prove', r'matrix', r'vector', r'probability', r'statistics'
     ]
-    
     for pattern in math_patterns:
         if re.search(pattern, user_message.lower()):
             return True
     return False
-
 
 def custom_chat(user_message, memory=None):
     """Handle chat interactions with specialized processing."""
@@ -556,7 +752,7 @@ def custom_chat(user_message, memory=None):
     # Process chat memory if provided
     memory_prompt = ""
     if memory and isinstance(memory, list) and len(memory) > 0:
-        memory_prompt = "\n\nHere's the conversation so far (use this for context):\n\n"
+        memory_prompt = "\n\nHere\'s the conversation so far (use this for context):\n\n"
         for item in memory:
             role = item.get('role', '')
             content = item.get('content', '')
@@ -565,7 +761,7 @@ def custom_chat(user_message, memory=None):
             elif role == 'assistant':
                 memory_prompt += f"You (Daphinix): {content}\n\n"
     
-    # Check if it's a math question
+    # Check if it\'s a math question
     if detect_math_question(user_message):
         math_prompt = SYSTEM_PROMPT + """
         IMPORTANT: This is a MATH question. You MUST:
@@ -574,11 +770,11 @@ def custom_chat(user_message, memory=None):
         3. Format your answer clearly using markdown
         4. Explain your reasoning at each step
         5. Use proper mathematical notation (fractions, exponents, etc.)
-        6. Always use \\dfrac instead of \\frac for larger, more readable fractions
+        6. Always use \\\\dfrac instead of \\\\frac for larger, more readable fractions
         7. Use display style equations with $$ ... $$ for important steps
-        8. Use larger notation where possible: \\sum instead of ∑, \\prod instead of ∏
-        9. Format matrices with \\begin{bmatrix} ... \\end{bmatrix}
-        10. Add spacing with \\; or \\quad between elements for readability
+        8. Use larger notation where possible: \\\\sum instead of ∑, \\\\prod instead of ∏
+        9. Format matrices with \\\\begin{bmatrix} ... \\\\end{bmatrix}
+        10. Add spacing with \\\\; or \\\\quad between elements for readability
         
         IMPORTANT: Never use [object Object] in your response. Use text strings directly in your markdown headings.
         Use plain text with emoji prefixes for headings:
@@ -589,7 +785,7 @@ def custom_chat(user_message, memory=None):
         chat.send_message(math_prompt)
     else:
         additional_prompt = """
-        IMPORTANT: Never use [object Object] in your response. Use text strings directly in your markdown headings.
+        IMPORTANT: Never use [object Object] in yourresponse. Use text strings directly in your markdown headings.
         Use plain text with emoji prefixes for headings:
         # 🔥 Main Title
         ## ✨ Subtitle
@@ -609,7 +805,6 @@ def custom_chat(user_message, memory=None):
     
     return response_text
 
-# List available models endpoint
 @app.route('/list_models')
 def list_models():
     """List available Gemini models for debugging."""
@@ -620,36 +815,32 @@ def list_models():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def process_image_request(image, user_input, memory=None):
+def process_image_request(image_pil, user_input, memory=None):
     """Process requests with images using Gemini Vision."""
     try:
-        # For image processing, use gemini-1.5-flash which supports vision
-        vision_model = genai.GenerativeModel("gemini-1.5-flash")
+        # Primary vision model (gemini-1.5-flash, as set above)
+        # vision_model is already initialized globally
         
-        # Save image to bytes for gemini
         img_byte_arr = BytesIO()
-        image.save(img_byte_arr, format=image.format or 'JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
+        image_pil.save(img_byte_arr, format=image_pil.format or 'JPEG') # Use image_pil
+        img_byte_arr_val = img_byte_arr.getvalue()
         
-        # Create the prompt with image
         if not user_input or user_input.strip() == "":
             user_input = "What's in this image? Describe it in detail."
         
-        # Process memory if provided
-        memory_prompt = ""
+        memory_prompt_text = ""
         if memory and isinstance(memory, list) and len(memory) > 0:
-            memory_prompt = "\n\nHere's the conversation so far (use this for context):\n\n"
+            memory_prompt_text = "\n\nHere's the conversation so far (use this for context):\n\n"
             for item in memory:
                 role = item.get('role', '')
                 content = item.get('content', '')
                 if role == 'user':
-                    memory_prompt += f"User: {content}\n\n"
-                elif role == 'assistant':
-                    memory_prompt += f"You (Daphinix): {content}\n\n"
+                    memory_prompt_text += f"User: {content}\n\n"
+                elif role == 'assistant': # 'model' in Gemini
+                    memory_prompt_text += f"You (Daphinix): {content}\n\n"
         
-        # Add Daphinix personality instructions for image analysis
-        vision_prompt = f"""
-        You are Daphinix, a helpful and fun AI assistant created by Purvesh Kolhe.
+        # Construct the full vision prompt using the global SYSTEM_PROMPT
+        vision_prompt_for_model = f"""{SYSTEM_PROMPT}
         Please analyze the following image and respond in a friendly, helpful manner with some emojis (about 7%).
         Keep your tone engaging and conversational.
         Solve complete answer if it is an academic question.
@@ -667,134 +858,93 @@ def process_image_request(image, user_input, memory=None):
         ## ✨ Subtitle
         ### ⭐ Section
         
-        {memory_prompt}
+        {memory_prompt_text}
         
         User's question about the image: {user_input}
         """
         
-        # Process with Gemini Vision
         response = vision_model.generate_content([
-            vision_prompt,
-            {"mime_type": "image/jpeg", "data": img_byte_arr}
+            vision_prompt_for_model,
+            {"mime_type": "image/jpeg", "data": img_byte_arr_val}
         ])
         
-        # Format LaTeX in response if present
         response_text = format_latex(response.text)
-        
-        # Remove any instances of [object Object] that might appear
         response_text = response_text.replace('[object Object]', '')
         
         return jsonify({'response': response_text})
+
     except Exception as e:
-        print(f"Vision API Error with gemini-1.5-flash: {str(e)}")
-        
-        # If specific model fails, try with gemini-1.5-pro as fallback
+        print(f"Vision API Error with {vision_model.model_name}: {str(e)}")
+        traceback.print_exc()
+        # Fallback logic from old.py using gemini-1.5-flash
         try:
-            vision_model = genai.GenerativeModel("gemini-1.5-pro")
+            print("Attempting fallback vision model: gemini-1.5-flash")
+            fallback_vision_model = genai.GenerativeModel("gemini-1.5-flash") # fallback now uses gemini-1.5-flash
             
-            img_byte_arr = BytesIO()
-            image.save(img_byte_arr, format=image.format or 'JPEG')
-            img_byte_arr = img_byte_arr.getvalue()
+            # Re-construct prompt for fallback (similar to above)
+            # img_byte_arr_val is already defined
             
-            # Same prompt as above with emphasis on no [object Object]
-            vision_prompt = f"""
-            You are Daphinix, a helpful and fun AI assistant created by Purvesh Kolhe.
-            Please analyze the following image and respond in a friendly, helpful manner with some emojis (about 7%).
-            Keep your tone engaging and conversational.
-            Solve complete answer if it is an academic question.
-            ALWAYS answer in a neat and formatted way using standard markdown.
-            IMPORTANT: Never use [object Object] in your response. Use text strings directly in your markdown headings.
-            
-            {memory_prompt}
-            
-            User's question about the image: {user_input}
-            """
-            
-            response = vision_model.generate_content([
-                vision_prompt,
-                {"mime_type": "image/jpeg", "data": img_byte_arr}
+            # Fallback prompt construction (can reuse vision_prompt_for_model structure)
+            # For simplicity, just re-stating the core request for the fallback.
+            # The vision_prompt_for_model already has necessary instructions.
+
+            response = fallback_vision_model.generate_content([
+                vision_prompt_for_model, # Reuse the same detailed prompt
+                {"mime_type": "image/jpeg", "data": img_byte_arr_val}
             ])
             
             response_text = format_latex(response.text)
             response_text = response_text.replace('[object Object]', '')
-            
             return jsonify({'response': response_text})
-        except Exception as nested_e:
-            print(f"Vision API Error with fallback model: {str(nested_e)}")
-            return jsonify({'error': 'Failed to process image. Please try again or use text-only chat.'}), 500
 
+        except Exception as nested_e:
+            print(f"Fallback Vision API Error (gemini-1.5-flash): {str(nested_e)}")
+            traceback.print_exc()
+            return jsonify({'error': 'Failed to process image with primary and fallback models. Please try again.'}), 500
 
 @app.route('/api/chat', methods=['POST'])
+@login_required
 def chat():
     data = request.json
     user_message = data.get('message', '')
-    memory = data.get('memory', [])
+    memory = data.get('memory', []) # Memory from client is list of {role, content}
     
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
     
     try:
-        # Build chat history from memory
-        chat_history = []
-        for item in memory:
-            if item['role'] == 'user':
-                chat_history.append({"role": "user", "parts": [item['content']]})
-            elif item['role'] == 'assistant':
-                chat_history.append({"role": "model", "parts": [item['content']]})
-
-        # Add system prompt as the first message in history
-        chat_history = [{"role": "user", "parts": [SYSTEM_PROMPT]}] + chat_history
-
-        # Start chat with history
-        chat = text_model.start_chat(history=chat_history)
-        response = chat.send_message(user_message)
-        return jsonify({
-            "response": response.text,
-            "image": None
-        })
+        # Directly use custom_chat which now aligns with old.py's method
+        response_text = custom_chat(user_message, memory)
+        return jsonify({"response": response_text})
     except Exception as e:
         print("Error in /api/chat:", e)
+        traceback.print_exc() # For server-side debugging
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/chat_with_image', methods=['POST'])
+@login_required 
 def chat_with_image():
     try:
         user_message = request.form.get('message', '')
-        memory_raw = request.form.get('memory', '[]')
+        memory_raw = request.form.get('memory', '[]') # Memory from client
         memory = json.loads(memory_raw)
-        image_file = request.files.get('image')
-        if not image_file:
+        image_file_storage = request.files.get('image')
+
+        if not image_file_storage:
             return jsonify({"error": "No image provided"}), 400
         
-        # Build chat history from memory
-        chat_history = []
-        for item in memory:
-            if item['role'] == 'user':
-                chat_history.append({"role": "user", "parts": [item['content']]})
-            elif item['role'] == 'assistant':
-                chat_history.append({"role": "model", "parts": [item['content']]})
+        try:
+            pil_image = Image.open(image_file_storage.stream)
+        except Exception as img_e:
+            print(f"Error opening image from FileStorage: {img_e}")
+            return jsonify({"error": "Invalid image file format or content."}), 400
 
-        # Add system prompt as the first message in history
-        chat_history = [{"role": "user", "parts": [SYSTEM_PROMPT]}] + chat_history
-
-        # Start chat with history
-        chat = vision_model.start_chat(history=chat_history)
-        # Build prompt as before
-        prompt_parts = [
-            SYSTEM_PROMPT,
-            f"User question: {user_message}",
-            f"The user has uploaded an image. Please analyze this image and answer their question based on what you see.",
-            {
-                "mime_type": image_file.content_type,
-                "data": base64.b64encode(image_file.read()).decode("utf-8")
-            }
-        ]
-        response = chat.send_message(prompt_parts)
-        return jsonify({
-            "response": response.text,
-            "image": None
-        })
+        # Directly use process_image_request which now aligns with old.py
+        return process_image_request(pil_image, user_message, memory)
+        
     except Exception as e:
+        print(f"Error in /api/chat_with_image: {str(e)}")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/create-room', methods=['GET', 'POST'])
@@ -813,8 +963,11 @@ def create_room():
                 'timer': {
                     'timeLeft': 25 * 60,  # 25 minutes in seconds
                     'isWorkSession': True,
-                    'isRunning': False
-                }
+                    'isRunning': False,
+                    'workDuration': 25, # Default work duration
+                    'breakDuration': 5   # Default break duration
+                },
+                'participants': [session.get('username', session['user_id'])] # Add creator as first participant
             }
             db.collection('rooms').document(room_id).set(room_data)
             return redirect(url_for('study_room', room_id=room_id))
@@ -857,26 +1010,27 @@ def study_room(room_id):
                          firebase_custom_token_for_client=firebase_custom_token_for_client,
                          session_user_id_for_debug=session_user_id_for_debug)
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 def get_room_ref(room_id):
-    db = initialize_firebase()
-    return db.collection('rooms').document(room_id)
+    db_client = initialize_firebase()
+    return db_client.collection('rooms').document(room_id)
 
 def get_room_messages(room_id):
-    db = initialize_firebase()
-    room_ref = db.collection('rooms').document(room_id)
+    db_client = initialize_firebase()
+    room_ref = db_client.collection('rooms').document(room_id)
     messages_ref = room_ref.collection('messages').order_by('timestamp')
     return [doc.to_dict() for doc in messages_ref.stream()]
 
 def save_room_message(room_id, message_data):
-    db = initialize_firebase()
-    room_ref = db.collection('rooms').document(room_id)
+    db_client = initialize_firebase()
+    room_ref = db_client.collection('rooms').document(room_id)
     messages_ref = room_ref.collection('messages')
     messages_ref.add(message_data)
 
 # REST endpoint to fetch chat history for a room
 @app.route('/api/room_chat_history/<room_id>')
+@login_required # Add login required if this needs to be protected
 def get_room_chat_history(room_id):
     try:
         messages = get_room_messages(room_id)
@@ -885,46 +1039,110 @@ def get_room_chat_history(room_id):
         print(f"Error fetching room chat history: {e}")
         return jsonify([])
 
+# Add global active_sessions mapping
+active_sessions = {}  # sid -> {'user_id': ..., 'room_id': ..., 'display_name': ...}
+
+def remove_participant_and_cleanup(room_id, user_uid):
+    db_client = initialize_firebase()
+    room_ref = db_client.collection('rooms').document(room_id)
+    room_doc = room_ref.get()
+    if not room_doc.exists:
+        return
+    room_data = room_doc.to_dict()
+    participants_list = room_data.get('participants', [])
+    user_display_name_to_remove = None
+    user_leaving_data_doc = db_client.collection('users').document(user_uid).get()
+    if user_leaving_data_doc.exists:
+        user_display_name_to_remove = user_leaving_data_doc.to_dict().get('username')
+    user_left_message_sent = False
+    if user_display_name_to_remove and user_display_name_to_remove in participants_list:
+        participants_list.remove(user_display_name_to_remove)
+        room_ref.update({'participants': participants_list})
+        print(f'[Socket] Removed {user_display_name_to_remove} (UID: {user_uid}) from participants list of room {room_id}. Updated list: {participants_list}')
+        socketio.emit('status', {'msg': f'{user_display_name_to_remove} has left the room.'}, room=room_id)
+        user_left_message_sent = True
+        if not participants_list:
+            print(f'[Socket] No participants left in room {room_id}. Proceeding to delete room and messages.')
+            try:
+                messages_ref = room_ref.collection('messages')
+                for msg_doc in messages_ref.stream():
+                    msg_doc.reference.delete()
+                room_ref.delete()
+                print(f'[Socket] Room {room_id} deleted successfully.')
+                socketio.emit('room_deleted', {
+                    'room': room_id,
+                    'message': 'Room has been deleted as all participants have left.'
+                }, room=room_id)
+            except Exception as e_delete:
+                print(f'[Socket] Error deleting room {room_id} or its messages: {str(e_delete)}')
+                socketio.emit('room_error', {
+                    'room': room_id,
+                    'message': 'Error during room cleanup. It may already be deleted.'
+                }, room=room_id)
+    elif user_display_name_to_remove:
+        print(f'[Socket] User {user_display_name_to_remove} (UID: {user_uid}) was not found in participants list {participants_list} of room {room_id}. No removal needed from list.')
+    else:
+        print(f'[Socket] Could not find display name for user UID {user_uid} to remove from participants list of room {room_id}. User may not exist or record is incomplete.')
+    if not user_left_message_sent and user_display_name_to_remove:
+        socketio.emit('status', {'msg': f'{user_display_name_to_remove} has disconnected.'}, room=room_id)
+    elif not user_left_message_sent:
+        socketio.emit('status', {'msg': f'A user (UID: {user_uid}) has disconnected.'}, room=room_id)
+
 # Real-time Study Room Chat Events
 @socketio.on('join_room')
 def handle_join_room(data):
-    room = data['room']
-    username = data['username']
-    print(f'[Socket] User {username} attempting to join room {room}')
-    join_room(room)
-    db = initialize_firebase()
-    room_ref = db.collection('rooms').document(room)
+    room_id = data.get('room')
+    user_uid = data.get('user_id')
+    user_display_name = data.get('display_name')
+
+    if not room_id or not user_uid or not user_display_name:
+        print(f"[Socket Join Error] Missing room_id ('{room_id}'), user_uid ('{user_uid}'), or user_display_name ('{user_display_name}'). Data: {data}")
+        emit('join_error', {'message': 'Required information missing to join room.'}, room=request.sid)
+        disconnect(request.sid) # Pass sid to disconnect
+        return
+
+    print(f'[Socket] User {user_display_name} (UID: {user_uid}) attempting to join room {room_id}')
+    join_room(room_id)
+
+    # Track active session
+    active_sessions[request.sid] = {
+        'user_id': user_uid,
+        'room_id': room_id,
+        'display_name': user_display_name
+    }
+
+    db_client = initialize_firebase()
+    room_ref = db_client.collection('rooms').document(room_id)
     room_doc = room_ref.get()
+
     if room_doc.exists:
-        print(f'[Socket] Room {room} exists, updating participants')
-        participants = room_doc.to_dict().get('participants', [])
-        print(f'[Socket] Current participants: {participants}')
-        if username not in participants:
-            participants.append(username)
-            print(f'[Socket] Adding {username} to participants list')
-            room_ref.update({'participants': participants})
-            print(f'[Socket] Updated participants list: {participants}')
-        # Emit current timer state to the joining user only
-        timer = room_doc.to_dict().get('timer', {})
-        timer.setdefault('timeLeft', 25*60)
-        timer.setdefault('isWorkSession', True)
-        timer.setdefault('isRunning', False)
-        timer.setdefault('workDuration', 25)
-        timer.setdefault('breakDuration', 5)
+        room_data = room_doc.to_dict()
+        participants_list = room_data.get('participants', [])
+
+        if user_display_name not in participants_list:
+            participants_list.append(user_display_name)
+            room_ref.update({'participants': participants_list})
+            print(f'[Socket] Added {user_display_name} to participants list for room {room_id}. Current list: {participants_list}')
+        else:
+            print(f'[Socket] User {user_display_name} already in participants list for room {room_id}.')
+        
+        timer = room_data.get('timer', {})
         emit('room_timer_update', {
-            'room': room,
-            'isRunning': timer['isRunning'],
-            'isPaused': not timer['isRunning'],
-            'isWorkSession': timer['isWorkSession'],
-            'timeLeft': timer['timeLeft'],
-            'workDuration': timer['workDuration'],
-            'breakDuration': timer['breakDuration']
+            'room': room_id,
+            'isRunning': timer.get('isRunning', False),
+            'isPaused': not timer.get('isRunning', False), # isPaused is inverse of isRunning
+            'isWorkSession': timer.get('isWorkSession', True),
+            'timeLeft': timer.get('timeLeft', 25 * 60),
+            'workDuration': timer.get('workDuration', 25),
+            'breakDuration': timer.get('breakDuration', 5)
         }, room=request.sid)
     else:
-        print(f'[Socket] Room {room} does not exist, creating new room with {username}')
-        room_ref.set({'participants': [username]}, merge=True)
-        print(f'[Socket] Created new room with participants: [{username}]')
-    emit('status', {'msg': f'{username} has joined the room.'}, room=room)
+        print(f"[Socket Join Error] Room {room_id} does not exist. User {user_display_name} cannot join.")
+        emit('join_error', {'message': f"Room '{room_id}' not found."}, room=request.sid)
+        disconnect(request.sid) # Pass sid to disconnect
+        return
+
+    emit('status', {'msg': f'{user_display_name} has joined the room.'}, room=room_id)
 
 @socketio.on('send_room_message')
 def handle_send_room_message(data):
@@ -950,78 +1168,43 @@ def handle_send_room_message(data):
 
 @socketio.on('leave_room')
 def handle_leave_room(data):
-    room = data['room']
-    username = data['username']
-    print(f'[Socket] User {username} leaving room {room}')
-    leave_room(room)
-    try:
-        # Remove user from participants in Firestore
-        db = initialize_firebase()
-        room_ref = db.collection('rooms').document(room)
-        room_doc = room_ref.get()
-        
-        if not room_doc.exists:
-            print(f'[Socket] Room {room} does not exist in database')
-            return
-            
-        room_data = room_doc.to_dict()
-        participants = room_data.get('participants', [])
-        print(f'[Socket] Room data: {room_data}')
-        print(f'[Socket] Current participants before removal: {participants}')
-        
-        if username in participants:
-            participants.remove(username)
-            print(f'[Socket] Removed {username} from participants')
-            room_ref.update({'participants': participants})
-            print(f'[Socket] Updated participants list: {participants}')
-            
-            # If no participants left, delete room and messages
-            if not participants:
-                print(f'[Socket] No participants left, cleaning up room {room}')
-                try:
-                    # Delete all messages
-                    messages_ref = room_ref.collection('messages')
-                    message_count = 0
-                    for msg in messages_ref.stream():
-                        msg.reference.delete()
-                        message_count += 1
-                    print(f'[Socket] Deleted {message_count} messages from room {room}')
-                    
-                    # Delete room doc
-                    room_ref.delete()
-                    print(f'[Socket] Room {room} deleted successfully')
-                    
-                    # Broadcast room deletion to all clients
-                    socketio.emit('room_deleted', {
-                        'room': room,
-                        'message': 'Room has been deleted as all participants have left.'
-                    }, room=room)
-                except Exception as e:
-                    print(f'[Socket] Error deleting room {room}: {str(e)}')
-                    # Try to notify remaining users about the error
-                    socketio.emit('room_error', {
-                        'room': room,
-                        'message': 'Error deleting room. Please try leaving again.'
-                    }, room=room)
-        else:
-            print(f'[Socket] User {username} not found in participants list')
-    except Exception as e:
-        print(f'[Socket] Error in handle_leave_room: {str(e)}')
-        import traceback
-        print(f'[Socket] Traceback: {traceback.format_exc()}')
-    
-    emit('status', {'msg': f'{username} has left the room.'}, room=room)
+    room_id = data.get('room')
+    user_uid_leaving = data.get('user_id')
+
+    # Remove from active_sessions
+    sid = request.sid
+    if sid in active_sessions:
+        del active_sessions[sid]
+
+    if not room_id or not user_uid_leaving:
+        print(f"[Socket Leave Error] Missing room_id ('{room_id}') or user_id ('{user_uid_leaving}'). Data: {data}")
+        return
+
+    print(f'[Socket] User UID {user_uid_leaving} attempting to leave room {room_id}')
+    remove_participant_and_cleanup(room_id, user_uid_leaving)
+    leave_room(room_id)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    # Optionally, handle cleanup if needed
-    pass
+    sid = request.sid
+    session_info = active_sessions.pop(sid, None)
+    if session_info:
+        room_id = session_info['room_id']
+        user_uid = session_info['user_id']
+        print(f"[Socket Disconnect] Cleaning up for user {user_uid} in room {room_id} (sid: {sid})")
+        remove_participant_and_cleanup(room_id, user_uid)
+        leave_room(room_id)
+    else:
+        print(f"[Socket Disconnect] Client disconnected: {sid}. No active session found.")
+    # pass
 
 @app.route('/api/room_participants/<room_id>')
+@login_required # Add login required
 def get_room_participants(room_id):
     try:
         print(f'[API] Fetching participants for room: {room_id}')
-        room_ref = db.collection('rooms').document(room_id)
+        db_client = initialize_firebase()
+        room_ref = db_client.collection('rooms').document(room_id)
         room_doc = room_ref.get()
         if room_doc.exists:
             room_data = room_doc.to_dict()
@@ -1042,8 +1225,8 @@ def get_room_participants(room_id):
 room_timers = {}  # room_id -> {'thread': Thread, 'stop_event': Event}
 
 def start_room_timer(room_id):
-    db = initialize_firebase()
-    room_ref = db.collection('rooms').document(room_id)
+    db_client = initialize_firebase()
+    room_ref = db_client.collection('rooms').document(room_id)
     stop_event = threading.Event()
     
     def timer_thread():
@@ -1065,7 +1248,7 @@ def start_room_timer(room_id):
                     break_duration = timer.get('breakDuration', 5)
                     timer['isWorkSession'] = not is_work
                     timer['timeLeft'] = (work_duration if not is_work else break_duration) * 60
-                    timer['isRunning'] = False
+                    timer['isRunning'] = False # Stop timer after switching
                     room_ref.set({'timer': timer}, merge=True)
                     socketio.emit('room_timer_update', {
                         'room': room_id,
@@ -1076,7 +1259,7 @@ def start_room_timer(room_id):
                         'workDuration': timer['workDuration'],
                         'breakDuration': timer['breakDuration']
                     }, room=room_id)
-                    break
+                    break # Exit thread after timer completes and switches
                     
                 timer['timeLeft'] = time_left - 1
                 room_ref.set({'timer': timer}, merge=True)
@@ -1091,8 +1274,8 @@ def start_room_timer(room_id):
                 }, room=room_id)
                 time.sleep(1)
             except Exception as e:
-                print(f"Error in timer thread: {e}")
-                break
+                print(f"Error in timer thread for room {room_id}: {e}")
+                break # Exit thread on error
                 
     t = threading.Thread(target=timer_thread, daemon=True)
     t.start()
@@ -1101,41 +1284,77 @@ def start_room_timer(room_id):
 def stop_room_timer(room_id):
     if room_id in room_timers:
         room_timers[room_id]['stop_event'].set()
+        # Wait for the thread to finish (optional, with timeout)
+        try:
+            room_timers[room_id]['thread'].join(timeout=2.0) 
+        except Exception as e:
+            print(f"Error joining timer thread for room {room_id}: {e}")
         room_timers.pop(room_id, None)
+        print(f"Stopped timer thread for room {room_id}")
 
-@socketio.on('room_timer_update')
-def handle_room_timer_update(data):
-    room = data['room']
-    action = data.get('action')
-    db = initialize_firebase()
-    room_ref = db.collection('rooms').document(room)
-    timer_data = {
-        'timeLeft': data['timeLeft'],
-        'isWorkSession': data['isWorkSession'],
-        'isRunning': data['isRunning'],
-        'workDuration': data['workDuration'],
-        'breakDuration': data['breakDuration']
-    }
-    room_ref.set({'timer': timer_data}, merge=True)
+@socketio.on('room_timer_control') # Changed event name for clarity
+def handle_room_timer_control(data):
+    room_id = data['room']
+    action = data.get('action') # 'start', 'pause', 'reset', 'duration_change'
+    
+    db_client = initialize_firebase()
+    room_ref = db_client.collection('rooms').document(room_id)
+    room_doc = room_ref.get()
+    if not room_doc.exists:
+        print(f"Room {room_id} not found for timer control.")
+        return
+
+    timer_data = room_doc.to_dict().get('timer', {})
+    # Ensure defaults
+    timer_data.setdefault('timeLeft', 25 * 60)
+    timer_data.setdefault('isWorkSession', True)
+    timer_data.setdefault('isRunning', False)
+    timer_data.setdefault('workDuration', 25)
+    timer_data.setdefault('breakDuration', 5)
     
     if action == 'start':
-        stop_room_timer(room)
-        start_room_timer(room)
-    elif action in ['pause', 'reset', 'duration_change']:
-        stop_room_timer(room)
+        if not timer_data['isRunning']:
+            timer_data['isRunning'] = True
+            stop_room_timer(room_id) # Stop any existing timer before starting new
+            start_room_timer(room_id)
+    elif action == 'pause':
+        if timer_data['isRunning']:
+            timer_data['isRunning'] = False
+            stop_room_timer(room_id)
+    elif action == 'reset':
+        timer_data['isRunning'] = False
+        timer_data['timeLeft'] = (timer_data['workDuration'] if timer_data['isWorkSession'] else timer_data['breakDuration']) * 60
+        stop_room_timer(room_id)
+    elif action == 'duration_change':
+        new_work_duration = data.get('workDuration', timer_data['workDuration'])
+        new_break_duration = data.get('breakDuration', timer_data['breakDuration'])
+        timer_data['workDuration'] = int(new_work_duration)
+        timer_data['breakDuration'] = int(new_break_duration)
+        # If timer is not running and it's a work session, update timeLeft to new work duration
+        if not timer_data['isRunning']:
+            if timer_data['isWorkSession']:
+                timer_data['timeLeft'] = timer_data['workDuration'] * 60
+            else:
+                timer_data['timeLeft'] = timer_data['breakDuration'] * 60
+        # If it was running, the change will apply next time it's reset or switched.
+        # Or, you could choose to reset it immediately if durations change while running.
+        # For now, keep it simple: duration changes affect reset or next session.
+    
+    room_ref.set({'timer': timer_data}, merge=True)
     
     # Broadcast timer state to all clients in the room
     socketio.emit('room_timer_update', {
-        'room': room,
+        'room': room_id,
         'isRunning': timer_data['isRunning'],
-        'isPaused': not timer_data['isRunning'],
+        'isPaused': not timer_data['isRunning'], # Derived property
         'isWorkSession': timer_data['isWorkSession'],
         'timeLeft': timer_data['timeLeft'],
         'workDuration': timer_data['workDuration'],
         'breakDuration': timer_data['breakDuration']
-    }, room=room)
+    }, room=room_id)
 
 @app.route('/api/room_timer_state/<room_id>')
+@login_required # Add login required
 def get_room_timer_state(room_id):
     try:
         room_ref = db.collection('rooms').document(room_id)
@@ -1152,8 +1371,193 @@ def get_room_timer_state(room_id):
         else:
             return jsonify({'timeLeft': 25*60, 'isWorkSession': True, 'isRunning': False, 'workDuration': 25, 'breakDuration': 5})
     except Exception as e:
-        print(f"Error fetching timer state: {e}")
+        print(f"Error fetching timer state for room {room_id}: {e}")
         return jsonify({'timeLeft': 25*60, 'isWorkSession': True, 'isRunning': False, 'workDuration': 25, 'breakDuration': 5})
 
+# Start orphaned room cleanup thread after Firebase and app initialization
+
+def cleanup_orphaned_rooms():
+    while True:
+        try:
+            print("[CLEANUP THREAD] Checking for orphaned rooms...")
+            db_client = initialize_firebase()
+            rooms_ref = db_client.collection('rooms')
+            orphaned_rooms_deleted_count = 0
+            active_room_sids = set(info['room_id'] for info in active_sessions.values())
+
+            for room_doc_snapshot in rooms_ref.stream():
+                room_id = room_doc_snapshot.id
+                room_data = room_doc_snapshot.to_dict()
+                participants = room_data.get('participants', [])
+                
+                # Condition 1: No participants listed in Firestore document
+                no_listed_participants = not participants
+                
+                # Condition 2: No active socket connections for this room
+                no_active_sockets_for_room = room_id not in active_room_sids
+                
+                # If room has no listed participants AND no active sockets, it's orphaned.
+                if no_listed_participants and no_active_sockets_for_room:
+                    print(f"[CLEANUP] Deleting orphaned room (no listed participants, no active sockets): {room_id}")
+                    messages_ref = room_doc_snapshot.reference.collection('messages')
+                    for msg_doc in messages_ref.stream():
+                        msg_doc.reference.delete()
+                    room_doc_snapshot.reference.delete()
+                    orphaned_rooms_deleted_count += 1
+                elif no_listed_participants and not no_active_sockets_for_room:
+                    print(f"[CLEANUP] Room {room_id} has no listed participants, but has active sockets. Investigate.")
+                elif not no_listed_participants and no_active_sockets_for_room:
+                    print(f"[CLEANUP] Room {room_id} has listed participants {participants}, but no active sockets. Will be cleaned up if participants leave via UI or sockets timeout.")
+
+            if orphaned_rooms_deleted_count > 0:
+                print(f"[CLEANUP THREAD] Deleted {orphaned_rooms_deleted_count} orphaned rooms.")
+            else:
+                print("[CLEANUP THREAD] No orphaned rooms found to delete in this cycle.")
+        except Exception as e:
+            print(f"[CLEANUP ERROR] {e}")
+            traceback.print_exc()
+        time.sleep(300)  # Run every 5 minutes (reduced from 10 for testing, can be increased)
+
+if not os.environ.get("WERKZEUG_RUN_MAIN"): # Ensure cleanup thread runs only once in dev mode
+    cleanup_thread = threading.Thread(target=cleanup_orphaned_rooms, daemon=True)
+    cleanup_thread.start()
+
+# --- New Leaderboard Endpoint ---
+@app.route('/api/leaderboard/<type>') # type can be 'xp' or 'streak'
+@login_required # or remove if public leaderboard
+def get_leaderboard(type):
+    try:
+        db_client = initialize_firebase()
+        users_ref = db_client.collection('users')
+        
+        query_field = 'leaderboardData.totalXp' if type == 'xp' else 'leaderboardData.currentStreak'
+        
+        # Firestore allows ordering by at most one field in a basic query.
+        # For more complex sorting (e.g., XP then by level as tie-breaker), 
+        # you might need composite indexes or client-side sorting of a larger dataset (not ideal).
+        
+        query = users_ref.order_by(query_field, direction=firestore.Query.DESCENDING).limit(20)
+        results = query.stream()
+        
+        leaderboard = []
+        rank = 1
+        for doc_snapshot in results:
+            user_data = doc_snapshot.to_dict()
+            lb_data = user_data.get('leaderboardData', {})
+            leaderboard.append({
+                'rank': rank,
+                'username': lb_data.get('username', user_data.get('username', 'N/A')),
+                'xp': lb_data.get('totalXp', 0),
+                'streak': lb_data.get('currentStreak', 0),
+                'level': lb_data.get('level', 1)
+                # Add other fields if needed, e.g., avatar
+            })
+            rank += 1
+            
+        return jsonify(leaderboard)
+    except Exception as e:
+        print(f"Error fetching leaderboard: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inspire')
+@login_required
+def get_inspire_content():
+    quote = "Could not fetch a quote at this time. Please try again later."
+    quote_author = "-"
+    meme_url = "/static/assets/images/placeholder_meme.png" # Default placeholder
+    fact = "Could not fetch a fun fact. Maybe you are the fun fact today!"
+    prompt = "What is one small step you can take towards your goals today?"
+
+    # Meme Categories
+    meme_categories = {
+        "general": "memes",
+        "study": "studymemes",
+        "wholesome": "wholesomememes",
+        "programming": "ProgrammerHumor",
+        "motivation": "GetMotivatedMemes"
+    }
+    selected_category = request.args.get('meme_category', 'general')
+    subreddit = meme_categories.get(selected_category, meme_categories['general'])
+
+    # Thought Prompts
+    thought_prompts = [
+        "What's one small productive task you can complete in the next 10 minutes?",
+        "Reflect on a recent challenge you overcame. What did you learn from it?",
+        "Write down three things you are grateful for in your life right now.",
+        "What are you most looking forward to learning or achieving this week?",
+        "How can you make your study environment 1% better for focus today?",
+        "Describe a moment you felt proud of your efforts recently.",
+        "What's a limiting belief you can challenge today?",
+        "If you had an extra hour today, how would you use it for self-improvement?",
+        "What's one act of kindness you can do for someone (or yourself) today?",
+        "Visualize your success. What does it look and feel like?"
+    ]
+    prompt = random.choice(thought_prompts)
+
+    try:
+        # Fetch a random quote from ZenQuotes API
+        quote_response = requests.get("https://zenquotes.io/api/random", timeout=5)
+        if quote_response.status_code == 200:
+            quotes_data = quote_response.json()
+            if quotes_data and isinstance(quotes_data, list) and len(quotes_data) > 0:
+                random_quote_obj = quotes_data[0] # API returns an array with one quote
+                quote = random_quote_obj.get('q', quote)
+                quote_author = random_quote_obj.get('a', quote_author)
+            else:
+                print(f"Warning: ZenQuotes API returned empty or invalid data: {quotes_data}")
+        else:
+            print(f"Error fetching quote from ZenQuotes: {quote_response.status_code}, {quote_response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching quote from ZenQuotes: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from ZenQuotes: {e}")
+
+    try:
+        # Fetch a random meme from the selected subreddit
+        meme_response = requests.get(f"https://meme-api.com/gimme/{subreddit}", timeout=5)
+        if meme_response.status_code == 200:
+            meme_data = meme_response.json()
+            if meme_data.get('url') and meme_data.get('nsfw') is False and meme_data.get('spoiler') is False:
+                if meme_data['url'].endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                    meme_url = meme_data['url']
+                elif meme_data.get('preview') and len(meme_data['preview']) > 0:
+                    meme_url = meme_data['preview'][-1]
+            else:
+                print(f"Meme API (/{subreddit}) did not return a suitable image URL. Data: {meme_data}")
+        else:
+            print(f"Error fetching meme from /{subreddit}: {meme_response.status_code}, {meme_response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching meme from /{subreddit}: {e}")
+    except json.JSONDecodeError as e: # Added JSONDecodeError for meme API as well
+        print(f"Error decoding JSON from Meme API (/{subreddit}): {e}")
+
+    try:
+        # Fetch a random fact
+        fact_response = requests.get("https://uselessfacts.jsph.pl/random.json?language=en", timeout=5)
+        if fact_response.status_code == 200:
+            fact_data = fact_response.json()
+            fact = fact_data.get('text', fact)
+        else:
+            print(f"Error fetching fact: {fact_response.status_code}, {fact_response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching fact: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from Fact API: {e}")
+    
+    return jsonify({
+        'quote': quote,
+        'author': quote_author,
+        'meme_url': meme_url,
+        'fact': fact,
+        'prompt': prompt,
+        'selected_meme_category': subreddit # Also return what was actually used
+    })
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)        
+    port = int(os.environ.get('PORT', 5000))
+    # Use Gunicorn for production, Flask dev server for development
+    # The 'eventlet' or 'gevent' async_mode for SocketIO is usually preferred with Gunicorn.
+    # For Flask dev server, 'threading' is fine.
+    socketio.run(app, host='0.0.0.0', port=port, debug=True) # Added debug=True for dev        

@@ -1,7 +1,7 @@
 .study-room-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 10px;
     height: calc(100vh - 40px);
     display: flex;
     flex-direction: column;
@@ -11,10 +11,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.6);
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.8);
     border-radius: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .room-info {
@@ -23,14 +24,15 @@
 }
 
 .room-name {
+    font-family: "Almendra", serif;
     font-size: 24px;
-    color: #fff;
+    color: #ff8a00;
     margin: 0;
+    text-shadow: 0 0 10px rgba(255, 138, 0, 0.5);
 }
 
 .room-code {
-    color: #a5b4fc;
-    font-size: 14px;
+    display: none;
 }
 
 .room-controls {
@@ -47,9 +49,10 @@
 
 .timer-panel {
     flex: 1;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.8);
     border-radius: 10px;
-    padding: 20px;
+    padding: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .shared-timer {
@@ -114,9 +117,10 @@
 }
 
 .participants-panel {
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.8);
     border-radius: 10px;
-    padding: 15px;
+    padding: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .participants-panel h3 {
@@ -156,26 +160,41 @@
 }
 
 .chat-panel {
-    height: calc(100vh - 8rem);
+    /* height: calc(100vh - 8rem); */ /* Removed fixed height, will be controlled by parent flex */
     display: flex;
     flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.0); /* Made transparent, parent div has bg */
+    box-shadow: none; /* Removed shadow, parent div has shadow */
+    /* Ensure the panel itself tries to take available height within its content-panel container */
+    flex-grow: 1;
+}
+
+/* The direct child div inside chat-panel, which now has the background and rounded corners */
+.chat-panel > .bg-black {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allow this to grow */
+    /* height: 80vh; */ /* Keep or adjust from HTML if needed */
+    /* max-height: calc(100vh - 120px); */ /* Keep or adjust from HTML */
 }
 
 .chat-messages {
-    flex: 1;
+    flex-grow: 1; /* Changed from flex: 1 */
     overflow-y: auto;
     padding: 0.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    word-break: break-word;
 }
 
 .chat-message {
     display: flex;
     gap: 0.5rem;
-    max-width: 85%;
-    margin-bottom: 0.75rem;
+    max-width: 85%; /* Max width for the entire message row */
+    margin-bottom: 0; /* Set spacing between messages to 0 */
     animation: fadeIn 0.3s ease-in-out;
+    /* width: 100%; */ /* Ensure it tries to use space from parent .chat-messages */
 }
 
 @keyframes fadeIn {
@@ -186,6 +205,10 @@
 .chat-message.sent {
     margin-left: auto;
     flex-direction: row-reverse;
+}
+
+.chat-message.sent .message-avatar {
+    display: none; /* Hide avatar for sent messages */
 }
 
 .chat-message.received {
@@ -203,7 +226,7 @@
 
 .message-avatar {
     flex-shrink: 0;
-    margin-top: auto;
+    margin-top: auto; /* Aligns avatar to the bottom of the flex container if bubble is taller */
 }
 
 .avatar-circle {
@@ -228,59 +251,70 @@
 }
 
 .message-bubble {
-    background-color: #374151;
-    border-radius: 1rem;
-    padding: 0.75rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* background-color: #374151; */ /* Default is now set by .received/.sent specific */
+    border-radius: 18px;
+    padding: 0; /* Padding set to 0 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     position: relative;
+    word-wrap: break-word; /* Handles long words within the bubble */
+    overflow-wrap: break-word; /* Standard equivalent */
+    min-width: 0; /* Important for flex item text wrapping */
+    flex: 1; /* Allow bubble to grow and shrink: flex-grow:1, flex-shrink:1, flex-basis:0% */
 }
 
 .sent .message-bubble {
-    background-color: #8B5CF6;
-    border-top-right-radius: 0.25rem;
+    background-color: #3B82F6; /* Blue-500 */
+    color: #FFFFFF;
+    border-radius: 18px 18px 4px 18px; /* Tail on bottom-right */
 }
 
 .received .message-bubble {
-    background-color: #374151;
-    border-top-left-radius: 0.25rem;
+    background-color: #F3F4F6; /* Gray-100 */
+    color: #1F2937; /* Gray-800 */
+    border-radius: 18px 18px 18px 4px; /* Tail on bottom-left */
 }
 
 .message-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.25rem;
+    display: none; 
 }
 
-.message-sender {
+.message-sender { 
     font-weight: 600;
-    font-size: 0.75rem;
-    color: #E5E7EB;
+    font-size: 0.875rem; 
+    display: block; 
+    margin-bottom: 0.1rem; 
+}
+.sent .message-sender {
+    color: #E5E7EB; 
+}
+.received .message-sender {
+    color: #4B5563; 
 }
 
 .message-time {
-    font-size: 0.625rem;
-    color: #9CA3AF;
+    display: none; 
 }
 
 .message-content {
-    color: #F3F4F6;
-    font-size: 0.875rem;
+    font-size: 0.9rem; 
     line-height: 1.5;
-    word-break: break-word;
+    /* word-break: break-word; */ /* Removed, handled by bubble */
+    /* Ensure content can take full width of bubble */
 }
 
-.chat-input-container {
+.chat-input-area { /* New class for the container of textarea and button */
     display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background-color: #1F2937;
-    border-radius: 0.75rem;
-    margin-top: 0.5rem;
+    flex-direction: column; /* Stack textarea and button vertically */
+    gap: 0.5rem; /* Space between textarea and button */
+    padding: 0.5rem; /* Padding for the input area */
+    background-color: transparent; /* Parent has background */
+    border-radius: 0; /* Parent has radius */
+    margin-top: 0; /* Parent has margin/spacing */
+    flex-shrink: 0; /* Prevent this area from shrinking */
 }
 
-#chat-input {
-    flex: 1;
+textarea#chat-input { /* Styles for the new textarea */
+    width: 100%;
     background-color: #374151;
     border: 1px solid #4B5563;
     border-radius: 0.5rem;
@@ -288,9 +322,11 @@
     color: #F3F4F6;
     font-size: 0.875rem;
     transition: all 0.2s ease;
+    resize: none; /* Explicitly disable resize */
+    min-height: 40px; /* Minimum height for a couple of lines */
 }
 
-#chat-input:focus {
+textarea#chat-input:focus {
     outline: none;
     border-color: #8B5CF6;
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
@@ -308,6 +344,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%; /* Make button full width */
 }
 
 #send-message:hover {
@@ -560,4 +597,125 @@
         opacity: 1;
         transform: translateY(0);
     }
-} 
+}
+
+/* Responsive adjustments for the study room header */
+@media (max-width: 640px) { /* Corresponds to Tailwind's 'sm' breakpoint */
+    .room-header .logo-container .logo-text {
+        font-size: 1.5rem; /* Slightly smaller logo text on very small screens */
+    }
+
+    .room-header .room-name-center {
+        font-size: 1rem; /* Smaller room name */
+        margin-top: 0.25rem; /* Add some space if it wraps under */
+        margin-bottom: 0.25rem;
+    }
+
+    .room-header .flex.items-center.space-x-2 {
+        /* This targets the controls container on small screens (due to sm:space-x-4) */
+        flex-wrap: nowrap; /* Prevent buttons themselves from wrapping if space is extremely tight */
+    }
+
+    /* Ensure room code (when only code is shown) is visible and not overly large */
+    .room-header .room-code-display.md\:hidden {
+        font-size: 0.7rem; /* text-xs equivalent */
+        padding: 2px 4px;
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 4px;
+    }
+
+    .room-header .btn-primary,
+    .room-header .btn-danger {
+        padding: 0.25rem 0.5rem; /* Smaller padding for buttons */
+        font-size: 0.7rem; /* Smaller font for icons if text is hidden */
+    }
+
+    .room-header .btn-primary i,
+    .room-header .btn-danger i {
+        margin-right: 0; /* Remove margin from icon when text is hidden */
+    }
+
+    /* Notification bell icon size if needed, though Tailwind classes attempt this */
+    .room-header #notification-bell i {
+        font-size: 1rem; /* text-base */
+    }
+}
+
+/* Ensure the specific Tailwind classes in HTML take precedence for show/hide */
+.md\:hidden {
+    display: inline !important; /* Or block/flex depending on context if Tailwind is overridden */
+}
+
+@media (min-width: 768px) {
+    .md\:hidden {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .vertical-nav {
+        width: 60px;
+        background-color: rgba(0, 0, 0, 0.8);
+        margin: 0;
+    }
+
+    .nav-tab {
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .nav-tab.active .tab-text,
+    .nav-tab .tab-text {
+        display: none;
+    }
+
+    .nav-tab i {
+        font-size: 1rem;
+    }
+
+    .tab-text {
+        display: none;
+    }
+
+    /* REMOVING THE HOVER EFFECT FOR TAB TEXT ON MOBILE 
+    .vertical-nav:hover .tab-text {
+        display: inline;
+        font-size: 0.8rem;
+        margin-left: 0.5rem;
+    }
+    */
+}
+
+.daphinix-response-area {
+    background-color: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Wider chat and Daphinix on mobile, Daphinix shorter */
+@media (max-width: 640px) { /* sm breakpoint */
+    .container-with-sidebar {
+        padding-left: 5px; /* Further reduce side padding */
+        padding-right: 5px;
+    }
+
+    #chat-panel .bg-black, /* Target the inner div with background */
+    #daphinix-panel .bg-black { 
+        /* width: 95vw; */ /* Let w-full and parent padding handle it mostly */
+        margin-left: auto; /* Ensure it's centered if parent is wider */
+        margin-right: auto;
+    }
+
+    #daphinix-panel .bg-black { /* Daphinix specific height on mobile */
+        height: 60vh; 
+        max-height: calc(100vh - 100px); /* Adjust max height as well */
+    }
+
+    #daphinix-panel .daphinix-response-area {
+        min-height: 150px; /* Adjust min height for shorter panel */
+        /* max-height will be constrained by parent */
+    }
+}
