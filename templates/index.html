@@ -283,19 +283,11 @@
                     
                     <div class="mb-6">
                         <h3 class="font-bold mb-3 text-purple-300"><i class="fas fa-image mr-1"></i> Background</h3>
-                        <select id="background-select" class="settings-select">
-                            <option value="video1">Forest Stream (Video)</option>
-                            <option value="video2">Rainy Window (Video)</option>
-                            <option value="video3">Library Ambience (Video, 0.5x speed)</option>
-                            <option value="image1">Starry Night</option>
-                            <option value="image2">Ocean Waves</option>
-                            <option value="image3">Cozy Cafe</option>
-                            <option value="image4">Night City</option>
-                            <option value="image5">Minimalist Desk</option>
-                            <option value="image6">Bookshelf</option>
-                            <option value="image7">Coffee & Notebook</option>
-                            <option value="image8">Abstract Gradient</option>
-                        </select>
+                        <button id="open-background-modal-btn" class="settings-select w-full text-left flex justify-between items-center">
+                            <span id="current-background-name-display">Forest Stream</span> <!-- Default or last selected -->
+                            <i class="fas fa-edit"></i> <!-- Or some other icon indicating 'change' -->
+                        </button>
+                        <!-- The old background-grid-container is removed from here -->
                     </div>
                     
                     <div class="mb-6">

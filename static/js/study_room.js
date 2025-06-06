@@ -8,6 +8,12 @@ let currentUsername = ''; // Kept for chat display name logic
 let currentRoomKey = '';
 let hasPromptedForName = false;
 let studyRoomScriptInitialized = false; // Global guard for the script's DOMContentLoaded logic
+let agoraClient = null;
+let localVideoTrack = null;
+let remoteUsers = {};
+let agoraUid = null;
+let agoraAppId = null;
+let agoraUidToNameMap = {};
 
 // Combined DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', async function() {
@@ -23,11 +29,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             // For #focus-mode button (direct handler in script.js)
             $('#focus-mode').off('click');
-            console.log('jQuery click handler for #focus-mode potentially removed by study_room.js');
+            console.log('[Study Room] jQuery click handler for #focus-mode potentially removed by study_room.js');
 
             // For #exit-focus button (delegated handler in script.js)
             $(document).off('click', '#exit-focus');
-            console.log('jQuery delegated click handler for #exit-focus potentially removed by study_room.js');
+            console.log('[Study Room] jQuery delegated click handler for #exit-focus potentially removed by study_room.js');
+
         } catch (e) {
             console.warn('Error trying to remove jQuery handlers in study_room.js:', e);
         }
@@ -176,6 +183,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // setupRoomFeatures will now directly use the firebaseUser obtained from the promise
         setupRoomFeatures(firebaseUser, currentUser, currentUsername);
+
+        // Initialize Video Call
+        initVideoCall();
 
     } catch (error) {
         console.error('Error during initial setup in study_room.js (after auth wait):', error);
@@ -366,101 +376,82 @@ document.addEventListener('DOMContentLoaded', async function() {
     const startSharedTimerBtn = document.getElementById('start-shared-timer');
     if(startSharedTimerBtn){
         startSharedTimerBtn.addEventListener('click', function() {
-            const sharedTimerDisplay = document.getElementById('shared-timer-display');
-            const sharedSessionLabel = document.getElementById('shared-session-label');
-            const sharedWorkDuration = document.getElementById('shared-work-duration');
-            const sharedBreakDuration = document.getElementById('shared-break-duration');
-            if(sharedTimerDisplay && sharedSessionLabel && sharedWorkDuration && sharedBreakDuration){
-        socket.emit('room_timer_update', {
-            room: currentRoom,
-            action: 'start',
-            isRunning: true,
-                    timeLeft: parseInt(sharedTimerDisplay.textContent.split(':')[0]) * 60 + parseInt(sharedTimerDisplay.textContent.split(':')[1]),
-                    isWorkSession: sharedSessionLabel.textContent === 'Work Session',
-                    workDuration: parseInt(sharedWorkDuration.value),
-                    breakDuration: parseInt(sharedBreakDuration.value)
-                });
-            }
+            // No need to get all values from DOM, server will use stored/default state for start
+            socket.emit('room_timer_control', {
+                room: currentRoom,
+                action: 'start'
+            });
+            playSound('sound-click'); // Added sound
         });
     }
 
     const pauseSharedTimerBtn = document.getElementById('pause-shared-timer');
     if(pauseSharedTimerBtn){
         pauseSharedTimerBtn.addEventListener('click', function() {
-            const sharedTimerDisplay = document.getElementById('shared-timer-display');
-            const sharedSessionLabel = document.getElementById('shared-session-label');
-            const sharedWorkDuration = document.getElementById('shared-work-duration');
-            const sharedBreakDuration = document.getElementById('shared-break-duration');
-            if(sharedTimerDisplay && sharedSessionLabel && sharedWorkDuration && sharedBreakDuration){
-        socket.emit('room_timer_update', {
-            room: currentRoom,
-            action: 'pause',
-            isRunning: false,
-                    timeLeft: parseInt(sharedTimerDisplay.textContent.split(':')[0]) * 60 + parseInt(sharedTimerDisplay.textContent.split(':')[1]),
-                    isWorkSession: sharedSessionLabel.textContent === 'Work Session',
-                    workDuration: parseInt(sharedWorkDuration.value),
-                    breakDuration: parseInt(sharedBreakDuration.value)
-                });
-            }
+            // No need to get all values from DOM, server will use stored/default state for pause
+            socket.emit('room_timer_control', {
+                room: currentRoom,
+                action: 'pause'
+            });
+            playSound('sound-click'); // Added sound
         });
     }
 
     const resetSharedTimerBtn = document.getElementById('reset-shared-timer');
     if(resetSharedTimerBtn){
         resetSharedTimerBtn.addEventListener('click', function() {
-            const sharedWorkDuration = document.getElementById('shared-work-duration');
-            const sharedBreakDuration = document.getElementById('shared-break-duration');
-            if(sharedWorkDuration && sharedBreakDuration){
-        socket.emit('room_timer_update', {
-            room: currentRoom,
-            action: 'reset',
-            isRunning: false,
-                    timeLeft: parseInt(sharedWorkDuration.value) * 60,
-            isWorkSession: true,
-                    workDuration: parseInt(sharedWorkDuration.value),
-                    breakDuration: parseInt(sharedBreakDuration.value)
+            // Server will determine timeLeft based on current session type and its duration
+            socket.emit('room_timer_control', {
+                room: currentRoom,
+                action: 'reset'
+            });
+            playSound('sound-click'); // Added sound
         });
-            }
-    });
     }
 
     // Duration change handlers
     const sharedWorkDurationInput = document.getElementById('shared-work-duration');
     if(sharedWorkDurationInput){
         sharedWorkDurationInput.addEventListener('change', function() {
-            const pauseSharedTimer = document.getElementById('pause-shared-timer');
-            const sharedBreakDuration = document.getElementById('shared-break-duration');
-            if(pauseSharedTimer && sharedBreakDuration && !pauseSharedTimer.classList.contains('hidden')) {
-            socket.emit('room_timer_update', {
-                room: currentRoom,
-                action: 'duration_change',
-                isRunning: true,
-                timeLeft: parseInt(this.value) * 60,
-                isWorkSession: true,
-                workDuration: parseInt(this.value),
-                    breakDuration: parseInt(sharedBreakDuration.value)
-            });
-        }
-    });
+            const newWorkDuration = parseInt(this.value);
+            const sharedBreakDurationInput = document.getElementById('shared-break-duration');
+            const newBreakDuration = sharedBreakDurationInput ? parseInt(sharedBreakDurationInput.value) : null;
+
+            if (!isNaN(newWorkDuration) && newWorkDuration > 0) {
+                let payload = {
+                    room: currentRoom,
+                    action: 'duration_change',
+                    workDuration: newWorkDuration
+                };
+                if (newBreakDuration !== null && !isNaN(newBreakDuration) && newBreakDuration > 0) {
+                    payload.breakDuration = newBreakDuration;
+                }
+                socket.emit('room_timer_control', payload);
+                playSound('sound-click'); // Added sound
+            }
+        });
     }
 
     const sharedBreakDurationInput = document.getElementById('shared-break-duration');
     if(sharedBreakDurationInput){
         sharedBreakDurationInput.addEventListener('change', function() {
-            const pauseSharedTimer = document.getElementById('pause-shared-timer');
-            const sharedWorkDuration = document.getElementById('shared-work-duration');
-            if(pauseSharedTimer && sharedWorkDuration && !pauseSharedTimer.classList.contains('hidden')) {
-            socket.emit('room_timer_update', {
-                room: currentRoom,
-                action: 'duration_change',
-                isRunning: true,
-                timeLeft: parseInt(this.value) * 60,
-                isWorkSession: false,
-                    workDuration: parseInt(sharedWorkDuration.value),
-                breakDuration: parseInt(this.value)
-            });
-        }
-    });
+            const newBreakDuration = parseInt(this.value);
+            const sharedWorkDurationInput = document.getElementById('shared-work-duration');
+            const newWorkDuration = sharedWorkDurationInput ? parseInt(sharedWorkDurationInput.value) : null;
+
+            if (!isNaN(newBreakDuration) && newBreakDuration > 0) {
+                 let payload = {
+                    room: currentRoom,
+                    action: 'duration_change',
+                    breakDuration: newBreakDuration
+                };
+                if (newWorkDuration !== null && !isNaN(newWorkDuration) && newWorkDuration > 0) {
+                    payload.workDuration = newWorkDuration;
+                }
+                socket.emit('room_timer_control', payload);
+                playSound('sound-click'); // Added sound
+            }
+        });
     }
 
     // Initial timer state fetch
@@ -537,6 +528,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             if (confirm('Are you sure you want to leave the room?')) {
                 console.log('[Frontend] User confirmed leaving room');
+                // Leave video call first
+                leaveVideoCall();
                 // Emit leave_room event with user_id (Firebase UID)
                 socket.emit('leave_room', { 
                     room: currentRoom, 
@@ -716,6 +709,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
 
     window.addEventListener('beforeunload', function() {
+        // Leave video call before page unloads
+        leaveVideoCall();
         if (socket && currentRoom && currentUser) { // currentUser is Firebase UID
             // For beforeunload, the server relies on the 'disconnect' event primarily.
             // Explicitly emitting 'leave_room' here can be redundant if disconnect is handled robustly,
@@ -833,6 +828,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
+    const uploadImageBtn = document.getElementById('upload-image-btn');
+    const imageUpload = document.getElementById('image-upload');
     if (uploadImageBtn && imageUpload) {
         const newUploadImageBtn = uploadImageBtn.cloneNode(true);
         if(uploadImageBtn.parentNode) uploadImageBtn.parentNode.replaceChild(newUploadImageBtn, uploadImageBtn);
@@ -844,6 +841,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
+
+    // Add socket event handlers for video call user identities
+    socket.on('video_user_identity', function(data) {
+        console.log('[Agora] Received user identity:', data);
+        agoraUidToNameMap[data.agora_uid] = data.display_name;
+        // If a video player for this user already exists but has a placeholder name, update it.
+        const usernameSpan = document.getElementById(`username-${data.agora_uid}`);
+        if (usernameSpan) {
+            usernameSpan.textContent = data.display_name;
+        }
+    });
+
+    socket.on('existing_video_users', function(data) {
+        console.log('[Agora] Received existing user identities:', data);
+        data.identities.forEach(identity => {
+            agoraUidToNameMap[identity.agora_uid] = identity.display_name;
+        });
+    });
+
 });
 
 function renderChatMessage(data, currentChatUsername) {
@@ -1071,4 +1087,123 @@ function playSound(soundId) {
         sound.currentTime = 0;
         sound.play().catch(e => console.warn(`Error playing sound ${soundId}:`, e));
     }
+}
+
+async function initVideoCall() {
+    console.log('[Agora] Initializing video call...');
+
+    // 1. Create Agora client
+    agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+
+    try {
+        // 2. Fetch token from server
+        const response = await fetch(`/api/get_agora_token?channelName=${currentRoom}`);
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(`Agora token error: ${data.error}`);
+        }
+        agoraAppId = data.appId;
+        agoraUid = data.uid;
+        const token = data.token;
+        
+        // Add own identity to the map
+        agoraUidToNameMap[agoraUid] = currentUsername;
+
+        // 3. Join channel
+        await agoraClient.join(agoraAppId, currentRoom, token, agoraUid);
+        console.log(`[Agora] Successfully joined channel ${currentRoom} with UID ${agoraUid}`);
+
+        // Handle remote users
+        agoraClient.on('user-published', handleUserPublished);
+        agoraClient.on('user-left', handleUserLeft);
+
+        // 4. Create and publish local video track (no audio)
+        localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+        
+        // Create player container
+        const localPlayerContainer = document.createElement('div');
+        localPlayerContainer.id = `player-container-${agoraUid}`;
+        localPlayerContainer.className = 'video-player-container is-local';
+        
+        // Add container to the grid FIRST
+        document.getElementById('video-grid-container').append(localPlayerContainer);
+
+        // Play video in the container, this will create child elements from Agora
+        localVideoTrack.play(localPlayerContainer);
+
+        // NOW, add the user info overlay on top
+        const userInfo = document.createElement('div');
+        userInfo.className = 'video-user-info';
+        userInfo.innerHTML = `<span class="username">${currentUsername} (You)</span>`;
+        localPlayerContainer.appendChild(userInfo);
+
+        await agoraClient.publish([localVideoTrack]);
+        console.log('[Agora] Local video track published');
+
+    } catch (error) {
+        console.error('[Agora] Failed to initialize video call', error);
+        const videoPanel = document.getElementById('video-panel');
+        if (videoPanel) {
+            videoPanel.innerHTML = `<div class="text-red-400 text-center p-8">Could not start video call. Please check console for errors and make sure camera permissions are allowed.</div>`;
+        }
+        if(typeof addNotification === 'function') {
+            addNotification("Video Error", "Could not start video call. Check camera permissions.", "error");
+        }
+    }
+}
+
+async function handleUserPublished(user, mediaType) {
+    await agoraClient.subscribe(user, mediaType);
+    console.log(`[Agora] Subscribed to user ${user.uid}`);
+
+    if (mediaType === 'video') {
+        remoteUsers[user.uid] = user;
+        const remotePlayerContainer = document.createElement('div');
+        remotePlayerContainer.id = `player-container-${user.uid}`;
+        remotePlayerContainer.className = 'video-player-container';
+        
+        const displayName = agoraUidToNameMap[user.uid] || `User ${user.uid}`;
+        
+        // Add container to grid
+        document.getElementById('video-grid-container').append(remotePlayerContainer);
+        
+        // Play video track first
+        user.videoTrack.play(remotePlayerContainer);
+        
+        // THEN add user info overlay
+        const userInfo = document.createElement('div');
+        userInfo.className = 'video-user-info';
+        userInfo.innerHTML = `<span class="username" id="username-${user.uid}">${displayName}</span>`;
+        remotePlayerContainer.appendChild(userInfo);
+    }
+}
+
+function handleUserLeft(user) {
+    delete remoteUsers[user.uid];
+    const playerContainer = document.getElementById(`player-container-${user.uid}`);
+    if (playerContainer) {
+        playerContainer.remove();
+    }
+    console.log(`[Agora] User ${user.uid} left`);
+}
+
+async function leaveVideoCall() {
+    // Stop and close the local video track
+    if (localVideoTrack) {
+        localVideoTrack.stop();
+        localVideoTrack.close();
+        localVideoTrack = null;
+    }
+    // Leave the Agora channel
+    if (agoraClient) {
+        await agoraClient.leave();
+        agoraClient = null;
+        console.log('[Agora] Left video channel');
+    }
+    // Clear the video grid
+    const videoGrid = document.getElementById('video-grid-container');
+    if (videoGrid) videoGrid.innerHTML = '';
+    // Clear the user map
+    agoraUidToNameMap = {};
+    remoteUsers = {};
 } 

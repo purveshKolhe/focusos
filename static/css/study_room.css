@@ -719,3 +719,74 @@ textarea#chat-input:focus {
         /* max-height will be constrained by parent */
     }
 }
+
+#video-grid-container {
+    display: grid;
+    /* Responsive grid for different screen sizes */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    height: calc(100vh - 120px); /* Adjust based on your header height */
+    overflow-y: auto;
+}
+
+/* On larger screens, enforce a 5-column grid */
+@media (min-width: 1200px) {
+    #video-grid-container {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.video-player-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9; /* Modern way to maintain aspect ratio */
+    background-color: #1a1a1a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px_10px rgba(0, 0, 0, 0.5);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.video-player-container > div, /* Targets Agora's wrapper */
+.video-player-container > video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This ensures the video fills the container, cropping if necessary */
+}
+
+.video-player-container.is-local {
+    border-color: #8b5cf6; /* Highlight local user's video */
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+}
+
+.video-user-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+    color: white;
+    font-size: 0.875rem;
+    z-index: 10;
+    transition: opacity 0.3s ease;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    font-weight: 600;
+}
+
+.video-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    padding: 1rem;
+    height: calc(100vh - 150px);
+    overflow-y: auto;
+}

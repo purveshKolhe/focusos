@@ -170,12 +170,25 @@ document.addEventListener('DOMContentLoaded', function() {
         // Sound effect function
         function playSound(id) {
             const sound = document.getElementById(id);
-            if (sound) {
+            if (sound && !sound.muted) { // Check if sound is not globally muted by the toggle
                 sound.currentTime = 0;
-                sound.play().catch(e => console.warn("Error playing sound:", e));
+                sound.play().catch(e => console.warn(`Error playing sound ${id}:`, e.message));
             }
         }
+        window.playSound = playSound; // Expose to global scope
         
+        // Function to handle media errors (images/videos in grid)
+        function handleMediaError(element, mediaName) {
+            console.error(`Media preview failed to load for ${mediaName}: ${element.src}. Hiding element.`);
+            element.style.display = 'none'; // Hide the broken media element
+            // Optionally, you could replace it with a placeholder or show a text message in its card
+            const parentCard = $(element).closest('.background-item-card');
+            if (parentCard.length && !parentCard.find('.media-error-message').length) {
+                parentCard.append('<p class="media-error-message text-xs text-red-400">Preview unavailable</p>');
+            }
+        }
+        window.handleMediaError = handleMediaError; // Expose if needed by other scripts, though likely not
+
         function createConfetti() {
             if (typeof confetti === 'function') {
                 confetti({
@@ -854,79 +867,263 @@ document.addEventListener('DOMContentLoaded', function() {
         // Environment settings
         
         // Background selection
-        $("#background-select").change(function() {
-            const selection = $(this).val();
-            const container = $("#background-container");
-            
-            container.empty();  // Clear existing content
-            container.append('<div class="overlay"></div>');
-            
-            if (selection === "video1") {
-                container.append(`
+        // Define background options with type and category
+        const backgroundOptions = [
+            // Local Videos (Restored)
+            { id: 'video1', name: 'Forest Stream', type: 'video', category: 'nature', path: '/static/assets/videos/forest_stream.webm', preview: '/static/assets/videos/forest_stream.webm' },
+            { id: 'video2', name: 'Rainy Window', type: 'video', category: 'ambient', path: '/static/assets/videos/rainy_window.mp4', preview: '/static/assets/videos/rainy_window.mp4' },
+            { id: 'video3', name: 'Library Ambience', type: 'video', category: 'study', path: '/static/assets/videos/library_ambience.mp4', preview: '/static/assets/videos/library_ambience.mp4', playbackRate: 0.5 },
+            // Hotlinked Videos
+            { id: 'hotlink_video_1', name: 'Cityscape', type: 'video', category: 'city', path: 'https://assets.mixkit.co/videos/20093/20093-720.mp4', preview: 'https://assets.mixkit.co/videos/20093/20093-720.mp4' },
+            { id: 'hotlink_video_2', name: 'Island Sea', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/2168/2168-720.mp4', preview: 'https://assets.mixkit.co/videos/2168/2168-720.mp4' },
+            { id: 'hotlink_video_3', name: 'Rain on Leaves', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/18310/18310-720.mp4', preview: 'https://assets.mixkit.co/videos/18310/18310-720.mp4' },
+            { id: 'hotlink_video_4', name: 'Empty Road', type: 'video', category: 'ambient', path: 'https://assets.mixkit.co/videos/41576/41576-720.mp4', preview: 'https://assets.mixkit.co/videos/41576/41576-720.mp4' },
+            { id: 'hotlink_video_5', name: 'Waterfall', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/2186/2186-720.mp4', preview: 'https://assets.mixkit.co/videos/2186/2186-720.mp4' },
+            { id: 'hotlink_video_6', name: 'Calm Fire', type: 'video', category: 'ambient', path: 'https://assets.mixkit.co/videos/25027/25027-720.mp4', preview: 'https://assets.mixkit.co/videos/25027/25027-720.mp4' },
+            { id: 'hotlink_video_7', name: 'Library Hotlink', type: 'video', category: 'study', path: 'https://assets.mixkit.co/videos/15897/15897-720.mp4', preview: 'https://assets.mixkit.co/videos/15897/15897-720.mp4' },
+            { id: 'hotlink_video_8', name: 'Beach Waves', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/5016/5016-720.mp4', preview: 'https://assets.mixkit.co/videos/5016/5016-720.mp4' },
+            { id: 'hotlink_video_9', name: 'Clouds', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/2408/2408-720.mp4', preview: 'https://assets.mixkit.co/videos/2408/2408-720.mp4' },
+            { id: 'hotlink_video_10', name: 'Sunset Sea', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/1926/1926-720.mp4', preview: 'https://assets.mixkit.co/videos/1926/1926-720.mp4' },
+            { id: 'hotlink_video_11', name: 'Raft in River', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/1218/1218-720.mp4', preview: 'https://assets.mixkit.co/videos/1218/1218-720.mp4' },
+            { id: 'hotlink_video_12', name: 'Rain in Lake', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/18312/18312-720.mp4', preview: 'https://assets.mixkit.co/videos/18312/18312-720.mp4' },
+            { id: 'hotlink_video_13', name: 'Water on Leaf', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/ztlezxr73bgv1spkgnz6iv0ptc8s', preview: 'https://assets.mixkit.co/ztlezxr73bgv1spkgnz6iv0ptc8s' },
+            { id: 'hotlink_video_14', name: 'Campfire', type: 'video', category: 'ambient', path: 'https://assets.mixkit.co/videos/47818/47818-720.mp4', preview: 'https://assets.mixkit.co/videos/47818/47818-720.mp4' },
+            { id: 'hotlink_video_15', name: 'Wet Roses', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/ra8udcqr0qh570sq2b7m9zte5q20', preview: 'https://assets.mixkit.co/ra8udcqr0qh570sq2b7m9zte5q20' },
+            { id: 'hotlink_video_16', name: 'Tranquil Forest', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/50847/50847-720.mp4', preview: 'https://assets.mixkit.co/videos/50847/50847-720.mp4' },
+            { id: 'hotlink_video_17', name: 'Snowy Mountains', type: 'video', category: 'nature', path: 'https://assets.mixkit.co/videos/3371/3371-720.mp4', preview: 'https://assets.mixkit.co/videos/3371/3371-720.mp4' },
+            { id: 'hotlink_video_18', name: 'Moon', type: 'video', category: 'ambient', path: 'https://assets.mixkit.co/videos/46898/46898-720.mp4', preview: 'https://assets.mixkit.co/videos/46898/46898-720.mp4' },
+            { id: 'hotlink_video_19', name: 'Starry Sky Hotlink', type: 'video', category: 'ambient', path: 'https://assets.mixkit.co/videos/46119/46119-720.mp4', preview: 'https://assets.mixkit.co/videos/46119/46119-720.mp4' },
+            { id: 'hotlink_video_20', name: 'Earth Spinning', type: 'video', category: 'abstract', path: 'https://assets.mixkit.co/videos/29351/29351-720.mp4', preview: 'https://assets.mixkit.co/videos/29351/29351-720.mp4' },
+            { id: 'hotlink_video_21', name: 'Girl in Library', type: 'video', category: 'study', path: 'https://assets.mixkit.co/videos/4531/4531-720.mp4', preview: 'https://assets.mixkit.co/videos/4531/4531-720.mp4' },
+            { id: 'hotlink_video_22', name: 'Cafe Hotlink', type: 'video', category: 'cafe', path: 'https://assets.mixkit.co/videos/29050/29050-720.mp4', preview: 'https://assets.mixkit.co/videos/29050/29050-720.mp4' },
+            // Local Images (Restored)
+            { id: 'image1', name: 'Starry Night', type: 'image', category: 'nature', path: '/static/assets/images/starry_night.jpg', preview: '/static/assets/images/starry_night.jpg' },
+            { id: 'image2', name: 'Ocean Waves', type: 'image', category: 'nature', path: '/static/assets/images/ocean_waves.jpg', preview: '/static/assets/images/ocean_waves.jpg' },
+            { id: 'image3', name: 'Cozy Cafe', type: 'image', category: 'cafe', path: '/static/assets/images/cozy_cafe.jpg', preview: '/static/assets/images/cozy_cafe.jpg' },
+            { id: 'image4', name: 'Night City', type: 'image', category: 'city', path: '/static/assets/images/night_city.jpg', preview: '/static/assets/images/night_city.jpg' },
+            { id: 'image5', name: 'Minimalist Desk', type: 'image', category: 'study', path: '/static/assets/images/minimalist_desk.jpg', preview: '/static/assets/images/minimalist_desk.jpg' },
+            { id: 'image6', name: 'Bookshelf', type: 'image', category: 'study', path: '/static/assets/images/bookshelf.jpg', preview: '/static/assets/images/bookshelf.jpg' },
+            { id: 'image7', name: 'Coffee & Notebook', type: 'image', category: 'cafe', path: '/static/assets/images/coffee_notebook.jpg', preview: '/static/assets/images/coffee_notebook.jpg' },
+            { id: 'image8', name: 'Abstract Gradient', type: 'image', category: 'abstract', path: '/static/assets/images/abstract_gradient.jpg', preview: '/static/assets/images/abstract_gradient.jpg' },
+            { id: 'image9', name: 'Boy', type: 'image', category: 'people', path: '/static/assets/images/boy.jpg', preview: '/static/assets/images/boy.jpg' },
+            { id: 'image10', name: 'Bridge', type: 'image', category: 'nature', path: '/static/assets/images/bridge.jpg', preview: '/static/assets/images/bridge.jpg' },
+            { id: 'image11', name: 'Flower in Hand', type: 'image', category: 'nature', path: '/static/assets/images/flower_in_hand.jpg', preview: '/static/assets/images/flower_in_hand.jpg' },
+            { id: 'image12', name: 'Girl in Subway', type: 'image', category: 'city', path: '/static/assets/images/girl_in_subway.jpg', preview: '/static/assets/images/girl_in_subway.jpg' },
+            { id: 'image13', name: 'Hibiscus', type: 'image', category: 'nature', path: '/static/assets/images/hibiscus.png', preview: '/static/assets/images/hibiscus.png' },
+            { id: 'image14', name: 'Life is Beautiful', type: 'image', category: 'abstract', path: '/static/assets/images/life_is_beautiful.jpg', preview: '/static/assets/images/life_is_beautiful.jpg' },
+            { id: 'image15', name: 'Pine', type: 'image', category: 'nature', path: '/static/assets/images/pine.jpg', preview: '/static/assets/images/pine.jpg' },
+        ];
+
+        const backgroundCategories = [
+            { id: 'all', name: 'All', icon: 'fas fa-th' },
+            { id: 'nature', name: 'Nature', icon: 'fas fa-leaf' },
+            { id: 'cafe', name: 'Cafe', icon: 'fas fa-coffee' },
+            { id: 'city', name: 'City', icon: 'fas fa-city' },
+            { id: 'study', name: 'Study', icon: 'fas fa-book-open' },
+            { id: 'ambient', name: 'Ambient', icon: 'fas fa-wind' },
+            { id: 'abstract', name: 'Abstract', icon: 'fas fa-draw-polygon' },
+            { id: 'people', name: 'People', icon: 'fas fa-user' },
+        ];
+
+        let currentSelectedBackgroundId = 'video1'; // Default restored to first local video
+        let activeBgModalMainTab = 'video'; // 'video' or 'image'
+        let activeBgModalSubCategory = 'all'; // e.g., 'all', 'nature', 'cafe'
+
+        const $backgroundModal = $('#background-selection-modal');
+        const $openBackgroundModalBtn = $('#open-background-modal-btn');
+        const $closeBackgroundModalBtn = $('#close-background-modal-btn');
+        const $currentBgNameDisplay = $('#current-background-name-display');
+        const $bgModalMainTabs = $('.bg-modal-main-tab');
+        const $bgModalSubCategoryTabsContainer = $('#bg-modal-subcategory-tabs');
+        const $bgModalGridContainer = $('#bg-modal-grid-container');
+        const $pageBackgroundContainer = $("#background-container"); // Renamed for clarity from $backgroundContainer
+
+        // Function to render sub-category tabs in the background modal
+        function renderBgModalSubCategoryTabs() {
+            const $container = $('#bg-modal-subcategory-tabs');
+            $container.empty(); // Clear existing tabs
+
+            // Add 'All' tab first
+            const $allTab = $(`
+                <button class="bg-modal-subcategory-tab p-2 rounded-md text-gray-400 hover:text-purple-300 hover:bg-gray-700" title="All" data-category="all">
+                    <i class="fas fa-th fa-lg"></i>
+                </button>
+            `);
+            $container.append($allTab);
+
+            const currentMainType = activeBgModalMainTab; // 'video' or 'image'
+            let categoriesToShow = new Set();
+
+            backgroundOptions.forEach(option => {
+                if (option.type === currentMainType && option.category) {
+                    categoriesToShow.add(option.category);
+                }
+            });
+
+            // Sort categories alphabetically for consistent order
+            const sortedCategories = Array.from(categoriesToShow).sort();
+
+            sortedCategories.forEach(categoryKey => {
+                const categoryDetails = backgroundCategories[categoryKey];
+                if (categoryDetails) {
+                    const $tab = $(`
+                        <button class="bg-modal-subcategory-tab p-2 rounded-md text-gray-400 hover:text-purple-300 hover:bg-gray-700" title="${categoryDetails.name}" data-category="${categoryKey}">
+                            <i class="${categoryDetails.icon} fa-lg"></i>
+                        </button>
+                    `);
+                    $container.append($tab);
+                }
+            });
+
+            // Set initial active sub-category tab
+            $container.find(`[data-category="${activeBgModalSubCategory || 'all'}"]`).addClass('active');
+        }
+        window.renderBgModalSubCategoryTabs = renderBgModalSubCategoryTabs; // Expose to global scope
+
+        // Function to render the grid of background items in the modal
+        function renderBgModalGrid() {
+            const $gridContainer = $('#bg-modal-grid-container');
+            $gridContainer.empty();
+            const currentMainType = activeBgModalMainTab; // 'video' or 'image'
+            const currentSubCategory = activeBgModalSubCategory; // e.g., 'nature', 'city', or 'all'
+
+            const filteredOptions = backgroundOptions.filter(option => {
+                return option.type === currentMainType &&
+                       (currentSubCategory === 'all' || !currentSubCategory || option.category === currentSubCategory);
+            });
+
+            if (filteredOptions.length === 0) {
+                $gridContainer.html('<p class="col-span-full text-center text-gray-400 py-4">No backgrounds found for this category.</p>');
+                return;
+            }
+
+            filteredOptions.forEach(option => {
+                const isSelected = option.id === currentSelectedBackgroundId; // Use currentSelectedBackgroundId
+                const $itemCard = $(`
+                    <div class="background-item-card ${isSelected ? 'selected' : ''}" data-id="${option.id}" role="button" tabindex="0">
+                        ${option.type === 'video' ? `
+                            <video muted preload="metadata" class="background-item-preview" src="${option.preview || option.path}#t=0.1" onerror="handleMediaError(this, '''${option.name}''')"></video>
+                        ` : `
+                            <img class="background-item-preview" src="${option.preview || option.path}" alt="${option.name} preview" onerror="handleMediaError(this, '''${option.name}''')">
+                        `}
+                        <span class="background-item-name">${option.name}</span>
+                    </div>
+                `);
+                $gridContainer.append($itemCard);
+            });
+        }
+        window.renderBgModalGrid = renderBgModalGrid; // Expose to global scope
+
+        function applyPageBackground(selectionId) {
+            const selection = backgroundOptions.find(opt => opt.id === selectionId);
+            if (!selection) return;
+
+            $pageBackgroundContainer.empty();
+            $pageBackgroundContainer.append('<div class="overlay"></div>');
+
+            if (selection.type === 'video') {
+                $pageBackgroundContainer.append(`
                     <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
-                        <source src="/static/assets/videos/forest_stream.webm" type="video/webm">
+                        <source src="${selection.path}" type="video/${selection.path.split('.').pop()}">
                         Your browser does not support the video tag.
                     </video>
                 `);
-            } else if (selection === "video2") {
-                // Updated to local path
-                const localVideoUrl = '/static/assets/videos/rainy_window.mp4'; 
-                container.append(`
-                    <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
-                        <source src="${localVideoUrl}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                `);
-                console.log('Set background to local video:', localVideoUrl);
-            } else if (selection === "video3") {
-                container.append(`
-                    <video id="background-video" autoplay loop muted class="w-full h-full object-cover">
-                        <source src="/static/assets/videos/library_ambience.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                `);
-                setTimeout(function() {
-                    const vid = document.getElementById('background-video');
-                    if (vid) vid.playbackRate = 0.5;
-                }, 100);
-            } else if (selection === "image1") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/starry_night.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image2") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/ocean_waves.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image3") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/cozy_cafe.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image4") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/night_city.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image5") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/minimalist_desk.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image6") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/bookshelf.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image7") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/coffee_notebook.jpg" class="w-full h-full object-cover">
-                `);
-            } else if (selection === "image8") {
-                container.append(`
-                    <img id="background-image" src="/static/assets/images/abstract_gradient.jpg" class="w-full h-full object-cover">
+                if (selection.playbackRate) {
+                     setTimeout(function() {
+                        const vid = document.getElementById('background-video');
+                        if (vid) vid.playbackRate = selection.playbackRate;
+                    }, 100);
+                }
+            } else if (selection.type === 'image') {
+                 $pageBackgroundContainer.append(`
+                    <img id="background-image" src="${selection.path}" class="w-full h-full object-cover">
                 `);
             }
+            localStorage.setItem('selectedBackgroundId', selectionId);
+        }
+
+        // Modal open/close
+        $(document).on('click', '#open-background-modal-btn', function(event) {
+            console.log('[script.js] Delegated click for #open-background-modal-btn fired!');
+            console.log('[script.js] Event target:', event.target);
             
-            playSound("sound-click");
-            // showNotification("Background updated", "info");
-            showUIMessage("Environment", "Background updated.", "info", true);
+            const $modal = $('#background-selection-modal'); // Re-select here
+            console.log('[script.js] $modal (re-selected) found:', $modal.length);
+
+            if ($modal.length) {
+                console.log('[script.js] $modal initial display style (computed):', $modal.css('display'));
+                console.log('[script.js] $modal classes BEFORE change:', $modal.attr('class'));
+                
+                $modal.removeClass('hidden'); // Show modal by removing 'hidden' class
+                
+                console.log('[script.js] $modal display style AFTER removeClass (computed):', $modal.css('display'));
+                console.log('[script.js] $modal classes AFTER change:', $modal.attr('class'));
+
+                // Ensure tabs and grid are rendered correctly when modal opens
+                renderBgModalSubCategoryTabs(); 
+                renderBgModalGrid();          
+                playSound("sound-click");
+            } else {
+                console.error('[script.js] #background-selection-modal NOT FOUND in DOM when trying to open!');
+            }
         });
+
+        $(document).on('click', '#close-background-modal-btn', function() {
+            const $modal = $('#background-selection-modal'); // Re-select here
+            if ($modal.length) {
+                console.log('[script.js] Close button clicked. Adding hidden class.');
+                $modal.addClass('hidden'); // Hide modal by adding 'hidden' class
+                playSound("sound-click");
+            } else {
+                console.error('[script.js] #background-selection-modal NOT FOUND in DOM when trying to close via button!');
+            }
+        });
+
+        $(document).on('click', '#background-selection-modal', function(e) { // Close on backdrop click
+            const $modal = $(this); 
+            if (e.target === $modal[0]) { 
+                console.log('[script.js] Backdrop clicked. Adding hidden class.');
+                $modal.addClass('hidden'); // Hide modal
+            }
+        });
+
+        // Main tabs for background type (Video/Image)
+        $bgModalMainTabs.click(function() {
+            activeBgModalMainTab = $(this).data('tab-type');
+            $bgModalMainTabs.removeClass('active');
+            $(this).addClass('active');
+            activeBgModalSubCategory = 'all'; // Reset to 'all' when main tab changes
+            renderBgModalSubCategoryTabs();
+            renderBgModalGrid();
+            playSound("sound-click");
+        });
+
+        // Initial render and setup for background
+        const savedBgId = localStorage.getItem('selectedBackgroundId');
+        if (savedBgId && backgroundOptions.find(opt => opt.id === savedBgId)) {
+            currentSelectedBackgroundId = savedBgId;
+        } else {
+            // Ensure currentSelectedBackgroundId has a valid default if nothing is in localStorage
+            currentSelectedBackgroundId = backgroundOptions.length > 0 ? backgroundOptions[0].id : null;
+        }
+        applyPageBackground(currentSelectedBackgroundId); 
+        const initialSelectedOption = backgroundOptions.find(opt => opt.id === currentSelectedBackgroundId);
+        if (initialSelectedOption) {
+             $currentBgNameDisplay.text(initialSelectedOption.name);
+        }
+        // Initial state for modal tabs (won't be visible until opened, but good to set up)
+        renderBgModalSubCategoryTabs(); 
+        // renderBgModalGrid(); // Grid will render when modal opens
+        
+
+        // Old background select logic (Removed as per new design)
+        /*
+        const $backgroundGridContainer = $('#background-grid-container'); // This was the old simple grid
+        const $changeBackgroundBtn = $('#change-background-btn'); // This was the old button toggling the simple grid
+        function renderBackgroundGrid() { ... old simple grid logic ... }
+        $changeBackgroundBtn.click(function() { ... old simple grid toggle ... });
+        renderBackgroundGrid(); // Old simple grid population
+        */
         
         // Ambient sound selection
         $("#ambient-sound-select").change(function() {
@@ -988,11 +1185,9 @@ document.addEventListener('DOMContentLoaded', function() {
         $("#day-night-toggle").change(function() {
             if ($(this).is(":checked")) {
                 $("body").addClass("night-mode");
-                // showNotification("Night mode enabled", "info");
                 showUIMessage("Settings", "Night mode enabled.", "info", true);
             } else {
                 $("body").removeClass("night-mode");
-                // showNotification("Day mode enabled", "info");
                 showUIMessage("Settings", "Day mode enabled.", "info", true);
             }
             
@@ -1003,11 +1198,9 @@ document.addEventListener('DOMContentLoaded', function() {
         $("#particles-toggle").change(function() {
             if ($(this).is(":checked")) {
                 $("#particles-js").show();
-                // showNotification("Particles enabled", "info");
                 showUIMessage("Settings", "Particles enabled.", "info", true);
             } else {
                 $("#particles-js").hide();
-                // showNotification("Particles disabled", "info");
                 showUIMessage("Settings", "Particles disabled.", "info", true);
             }
             
@@ -1037,7 +1230,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const userDataFromAPI = await response.json();
                 if (userDataFromAPI.error) {
                     console.error("[Main Interface] Error fetching user data from API:", userDataFromAPI.error);
-                    // showNotification("User Data Error: Could not load your user details.", "error"); // Uses local toast
                     showUIMessage("User Data", "Error: Could not load your user details.", "error", false); // Keep as local toast
                     return; // Stop if API user data fails
                 }
@@ -1090,30 +1282,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     } else {
                         console.error("[Main Interface] initializeGlobalNotificationSystem is not defined. CRITICAL: Ensure notifications.js is loaded.");
-                        // showNotification("Notification System Error", "error"); // Uses local toast
                         showUIMessage("System Error", "Notification system error.", "error", false); // Keep as local toast
                     }
                 } else {
                      if (!firebaseUser) {
                         console.warn(`[Main Interface] Firebase user is NULL when trying to set up for API UserID: ${apiUserId}. Global notifications likely disabled.`);
-                        // showNotification("Client not signed into Firebase. Global notifications may not work.", "error"); // Uses local toast
                         showUIMessage("Auth Error", "Client not signed into Firebase. Global notifications may not work.", "error", false); // Keep as local toast
                     } else { // firebaseUser.uid !== apiUserId
                         console.error(`[Main Interface] CRITICAL UID MISMATCH on main page: API UserID is ${apiUserId}, but Firebase Auth UID is ${firebaseUser.uid}. Global notifications disabled.`);
-                        // showNotification("User identity mismatch. Please re-login. Global notifications disabled.", "error"); // Uses local toast
                         showUIMessage("Auth Error", "User identity mismatch. Please re-login. Global notifications disabled.", "error", false); // Keep as local toast
                     }
                 }
 
             } catch (error) {
                 console.error("[Main Interface] Error in loadUserDataAndInitNotifications:", error);
-                // showNotification("Error loading user data or initializing notifications.", "error"); // Uses local toast
                 showUIMessage("System Error", "Error loading user data or initializing notifications.", "error", false); // Keep as local toast
             }
         }
         
         // Call the new function that handles both user data loading and notification init
-        loadUserDataAndInitNotifications();
+        // This call is typically done in $(document).ready() after this function definition.
+        // loadUserDataAndInitNotifications(); // Ensure this is called in doc ready
         
         function renderGamificationGuide() {
             console.log("[renderGamificationGuide] Called.");
@@ -1400,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         result.new_badges.forEach(badgeId => {
                             const badgeDef = gamificationSettings.badges?.[badgeId];
                             if (badgeDef) {
-                                showUIMessage("Badge Unlocked!", `You've earned the "${badgeDef.name}" badge! (${badgeDef.description})`, "success", true);
+                                showUIMessage("Badge Unlocked!", `You've earned the \\"${badgeDef.name}\\" badge! (${badgeDef.description})`, "success", true);
                                 playSound("sound-levelup");
                                 createConfetti();
                             }
@@ -1413,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     if (result.completed_quests && result.completed_quests.length > 0) {
                          result.completed_quests.forEach(questTitle => {
-                            showUIMessage("Quest Completed!", `You've completed the quest: "${questTitle}"!`, "success", true);
+                            showUIMessage("Quest Completed!", `You've completed the quest: \\"${questTitle}\\"!`, "success", true);
                             // XP for quest is handled server-side and included in progress update. Sound/confetti might be desired here too.
                             playSound("sound-complete"); // Or a specific quest complete sound
                         });
@@ -1674,7 +1863,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Load data when the page loads
         $(document).ready(function() {
-            // loadUserData(); // Now called by loadUserDataAndInitNotifications
+            loadUserDataAndInitNotifications(); // Ensure this is called
             loadTodoList();
             loadChatHistory();
             fetchAndRenderLeaderboard('xp'); // Initial load with XP by default
@@ -2017,6 +2206,40 @@ document.addEventListener('DOMContentLoaded', function() {
             // For now, main load is on document.ready and refresh button.
             // If content should ALWAYS refresh when tab is clicked:
             // fetchAndDisplayInspireContent(); 
+        });
+
+        $(document).one('click keydown touchstart', function() { // Combined unlock events
+            if (!audioUnlocked) { // Ensure this block runs only once as unlockAudio itself is {once: true}
+                // The unlockAudio function already handles playing a dummy sound to unlock context.
+                // Now, if rain is the selected default, try to play it specifically after this first interaction.
+                const selectedSound = $("#ambient-sound-select").val();
+                if (selectedSound === "rain") {
+                    const rainAudio = $("#ambient-rain")[0];
+                    if (rainAudio && rainAudio.paused) { // Check if it's not already playing
+                        rainAudio.play().catch(e => console.warn("Error playing default rain sound after interaction:", e));
+                    }
+                }
+            }
+        });
+
+        // Event listener for clicking on a background item in the modal grid
+        $(document).on('click', '#bg-modal-grid-container .background-item-card', function() {
+            const selectedId = $(this).data('id');
+            applyPageBackground(selectedId);
+            currentSelectedBackgroundId = selectedId; // Update the main variable here
+            
+            // Update selected state visual on cards within the modal grid
+            $('#bg-modal-grid-container .background-item-card').removeClass('selected');
+            $(this).addClass('selected');
+            
+            const selectedOption = backgroundOptions.find(opt => opt.id === selectedId);
+            if (selectedOption) {
+                $currentBgNameDisplay.text(selectedOption.name);
+            }
+            playSound("sound-click");
+            showUIMessage("Environment", `Background changed to ${selectedOption.name}.`, "info", true);
+            // Optionally close modal after selection
+            // $backgroundModal.css('display', 'none'); 
         });
     }
 });

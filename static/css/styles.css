@@ -1391,3 +1391,178 @@ select {
 #daphinix-panel .message-bubble-wrapper {
     max-width: 100%; /* Allow bubble to take full width since avatar is hidden */
 }
+
+/* Background Grid Styles */
+#background-grid-container {
+    /* Styles for the grid container are mostly handled by Tailwind classes in HTML */
+    /* max-h-96 overflow-y-auto p-2 bg-gray-800 bg-opacity-50 rounded-lg are set in HTML */
+}
+
+.background-item-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem; /* 8px */
+    padding: 0.5rem; /* 8px */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    aspect-ratio: 1 / 1; /* Maintain a square aspect ratio, or adjust as needed */
+    overflow: hidden;
+}
+
+.background-item-card:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #D946EF; /* Purple-pink accent */
+}
+
+.background-item-card.selected {
+    border-color: #D946EF; /* Purple-pink accent */
+    box-shadow: 0 0 15px rgba(217, 70, 239, 0.5);
+    background-color: rgba(217, 70, 239, 0.15);
+}
+
+.background-item-preview {
+    width: 100%;
+    height: 70%; /* Adjust based on desired preview size */
+    object-fit: cover;
+    border-radius: 0.375rem; /* 6px, slightly smaller than card */
+    margin-bottom: 0.5rem; /* Space between preview and name */
+}
+
+.background-item-name {
+    font-size: 0.75rem; /* 12px */
+    color: #f0f0f0;
+    margin-top: auto; /* Pushes name to bottom if preview is smaller */
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* New Background Selection Modal Styles */
+#background-selection-modal {
+    /* Tailwind handles initial hidden, fixed, inset-0, flex, items-center, justify-center, z-50, p-4 */
+}
+
+#background-selection-modal .modal-content {
+    /* Tailwind handles bg, padding, rounded, shadow, max-w, w-full, text-white, border, flex, flex-col, max-h */
+    /* Ensuring backdrop-blur works if it wasn't already */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+#background-selection-modal .bg-modal-main-tab {
+    /* Tailwind handles flex-1, py, px, text-sm, font-medium, text-center, text-gray-400, hover, border, focus */
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+#background-selection-modal .bg-modal-main-tab.active {
+    color: #D946EF; /* Active tab text color */
+    border-bottom-color: #D946EF; /* Active tab border color */
+}
+
+#bg-modal-subcategory-tabs {
+    /* Tailwind handles mb, flex, space-x, justify-center, p, bg, rounded, overflow-x */
+    /* Add scrollbar styling for consistency if needed, or use browser default */
+}
+
+.bg-modal-subcategory-tab {
+    /* Tailwind can handle p, rounded, text, hover:text, hover:bg */
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    position: relative; /* For tooltip positioning if using custom CSS tooltips */
+}
+
+.bg-modal-subcategory-tab.active {
+    background-color: rgba(217, 70, 239, 0.2); /* Light purple active state */
+    color: #D946EF;
+    border-color: #D946EF;
+}
+
+/* Tooltip for subcategory icons (can be simple title attribute or custom CSS) */
+.bg-modal-subcategory-tab[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-5px);
+    background-color: #111827; /* dark gray */
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+#bg-modal-grid-container {
+    /* Tailwind handles flex-grow, overflow-y, grid, gap, p */
+    /* Custom scrollbar (styled-scrollbar class needs to be defined or use default) */
+    height: 400px; /* Or any fixed height you prefer, e.g., 60vh */
+}
+
+.styled-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+.styled-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+.styled-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+.styled-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Ensure background item cards in modal look okay */
+#bg-modal-grid-container .background-item-card {
+    /* Existing styles for .background-item-card should largely apply */
+    /* May need minor tweaks if modal context changes things */
+    height: 120px; /* Example fixed height, or use aspect ratio */
+}
+
+#bg-modal-grid-container .background-item-preview {
+    height: 75%; /* Adjust for modal view */
+}
+
+#bg-modal-grid-container .background-item-name {
+    font-size: 0.7rem; /* Slightly smaller for modal if needed */
+}
+
+/* Override button style to look like a select */
+#open-background-modal-btn {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid #e52e71;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 4px;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+#open-background-modal-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+#current-background-name-display {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 0.5rem;
+}

@@ -116,7 +116,8 @@
     <!-- Vertical Navigation Bar -->
     <div class="fixed top-16 left-0 h-full bg-black bg-opacity-50 z-30 vertical-nav">
         <div class="flex flex-col h-full space-y-2">
-            <button class="nav-tab active" data-target="timer-panel"><i class="fas fa-clock"></i><span class="tab-text">Timer</span></button>
+            <button class="nav-tab active" data-target="video-panel"><i class="fas fa-video"></i><span class="tab-text">Video</span></button>
+            <button class="nav-tab" data-target="timer-panel"><i class="fas fa-clock"></i><span class="tab-text">Timer</span></button>
             <button class="nav-tab" data-target="participants-panel"><i class="fas fa-users"></i><span class="tab-text">Participants</span></button>
             <button class="nav-tab" data-target="chat-panel"><i class="fas fa-comments"></i><span class="tab-text">Chat</span></button>
             <button class="nav-tab" data-target="daphinix-panel"><i class="fas fa-robot"></i><span class="tab-text">Daphinix</span></button>
@@ -140,8 +141,15 @@
 
     <!-- Content Panels (copied from index.html for full feature parity) -->
     <div class="container-with-sidebar mx-auto pt-24 pb-4 px-4">
+        <!-- Video Panel (New) -->
+        <div id="video-panel" class="content-panel active">
+            <div id="video-grid-container" class="video-grid">
+                <!-- Video streams will be dynamically added here -->
+            </div>
+        </div>
+
         <!-- Timer Panel (Shared Room Timer) -->
-        <div id="timer-panel" class="content-panel active">
+        <div id="timer-panel" class="content-panel">
             <div class="flex flex-col items-center justify-center h-full">
                 <div class="timer-circle mb-8">
                     <h2 class="text-center text-white text-xl mb-4">Shared Room Timer</h2>
@@ -309,22 +317,15 @@
         <div id="environment-panel" class="content-panel">
             <div class="bg-black bg-opacity-60 text-white p-6 rounded-xl max-w-lg mx-auto">
                 <h2 class="text-2xl font-bold mb-6 text-center text-purple-300">Environment Settings</h2>
+                
                 <div class="mb-6">
                     <h3 class="font-bold mb-3 text-purple-300"><i class="fas fa-image mr-1"></i> Background</h3>
-                    <select id="background-select" class="settings-select">
-                        <option value="video1">Forest Stream (Video)</option>
-                        <option value="video2">Rainy Window (Video)</option>
-                        <option value="video3">Library Ambience (Video, 0.5x speed)</option>
-                        <option value="image1">Starry Night</option>
-                        <option value="image2">Ocean Waves</option>
-                        <option value="image3">Cozy Cafe</option>
-                        <option value="image4">Night City</option>
-                        <option value="image5">Minimalist Desk</option>
-                        <option value="image6">Bookshelf</option>
-                        <option value="image7">Coffee & Notebook</option>
-                        <option value="image8">Abstract Gradient</option>
-                    </select>
+                    <button id="open-background-modal-btn" class="settings-select w-full text-left flex justify-between items-center">
+                        <span id="current-background-name-display">Forest Stream</span> <!-- Default or last selected -->
+                        <i class="fas fa-edit"></i>
+                    </button>
                 </div>
+                
                 <div class="mb-6">
                     <h3 class="font-bold mb-3 text-purple-300"><i class="fas fa-volume-up mr-1"></i> Ambient Sound</h3>
                     <select id="ambient-sound-select" class="settings-select">
@@ -433,6 +434,7 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.2.js"></script>
 <script src="/static/js/script.js"></script>
 <script src="/static/js/study_room.js"></script>
 {% endblock %} 

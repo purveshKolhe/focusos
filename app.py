@@ -34,6 +34,7 @@ from flask_socketio import SocketIO, join_room, leave_room, emit, disconnect
 import threading
 import time
 import traceback
+from agora_token_builder import RtcTokenBuilder
 
 # Gamification Logic
 import gamification_logic
@@ -52,6 +53,14 @@ if app.secret_key == SECRET_KEY_FALLBACK:
     print("WARNING: SECRET_KEY environment variable not set. Using a temporary secret key.")
     print("Sessions will NOT persist across application restarts or redeployments.")
     print("For production, set a strong, static SECRET_KEY environment variable.")
+
+# --- Agora Configuration ---
+# IMPORTANT: You need to create a free Agora account to get an App ID and App Certificate.
+# The free tier includes 10,000 minutes per month.
+# Add these to your .env file.
+# https://www.agora.io/en/
+AGORA_APP_ID = os.environ.get('AGORA_APP_ID')
+AGORA_APP_CERTIFICATE = os.environ.get('AGORA_APP_CERTIFICATE')
 
 # Initialize Firebase
 try:
@@ -376,52 +385,42 @@ def save_user_progress():
         user_doc_ref = db_client.collection('users').document(user_id)
         user_doc_snapshot = user_doc_ref.get()
         
+        # Ensure gamification settings are loaded regardless of user doc existence for now
         gamification_settings_doc = gamification_logic.get_gamification_config_ref(db_client).get()
         gamification_settings = gamification_settings_doc.to_dict() if gamification_settings_doc.exists else {}
 
-        current_user_document_data = {}
-        if user_doc_snapshot.exists:
-            current_user_document_data = user_doc_snapshot.to_dict()
-        else:
-            # Should ideally not happen if GET /api/user_data was called first on client load
-            # Initialize with defaults if creating fresh
-            current_user_document_data = {
-                'uid': user_id,
-                'username': session.get('username', user_id), # Use session username or UID
-                'email': '', # Placeholder, ideally fetch from auth if available
-                'created_at': datetime.utcnow(),
-                'progress': {},
-                'leaderboardData': {}
-            }
+        if not user_doc_snapshot.exists:
+            # Critical: If user document doesn't exist during a POST to save progress, 
+            # it implies a significant issue or a client trying to save before full initialization.
+            # Do not proceed to create a new document or default progress here.
+            error_msg = f"User document for user_id {user_id} not found during save_user_progress (POST). Aborting save to prevent data loss."
+            print(f"ERROR: {error_msg}")
+            return jsonify({'error': error_msg, 'status': 'error'}), 500 # Or 404 if preferred
+
+        current_user_document_data = user_doc_snapshot.to_dict()
         
-        # Ensure 'progress' and 'leaderboardData' keys exist
-        if 'progress' not in current_user_document_data: current_user_document_data['progress'] = {}
-        if 'leaderboardData' not in current_user_document_data: current_user_document_data['leaderboardData'] = {}
+        # Ensure 'progress' and 'leaderboardData' sub-dictionaries exist if the document itself was found
+        if 'progress' not in current_user_document_data:
+            current_user_document_data['progress'] = {}
+            print(f"WARNING: User {user_id} document existed but 'progress' field was missing. Initialized as empty dict.")
+        
+        if 'leaderboardData' not in current_user_document_data:
+            # Initialize leaderboardData with sensible defaults if it was missing from an existing document
+            progress_for_lb_init = current_user_document_data.get('progress', {})
+            current_user_document_data['leaderboardData'] = {
+                'username': current_user_document_data.get('username', user_id),
+                'totalXp': progress_for_lb_init.get('xp', 0),
+                'currentStreak': progress_for_lb_init.get('streak', 0),
+                'level': progress_for_lb_init.get('level', 1)
+            }
+            print(f"WARNING: User {user_id} document existed but 'leaderboardData' field was missing. Initialized.")
 
         user_progress = current_user_document_data['progress']
 
         # Extract progress data from client payload
         client_progress_update = client_data_payload.get('progress', {})
         event_type_from_client = client_data_payload.get('event_type')
-
-        # Smartly merge client_progress_update into user_progress
-        # Client is generally authoritative for its current XP and Level display during a sync.
-        # Server will recalculate and override these if an event (like session_completed) occurs.
-        if 'xp' in client_progress_update:
-            user_progress['xp'] = client_progress_update['xp']
-        if 'level' in client_progress_update:
-            user_progress['level'] = client_progress_update['level']
-
-        # For total_time, sessions, and sessionHistory, the server should be more authoritative
-        # especially during general syncs. These are primarily modified by server-side event processing.
-        
-        # If client sends badges, merge them. This assumes client badge list is for display consistency.
-        # Actual badge awarding is server-side.
-        if 'badges' in client_progress_update: 
-            user_progress['badges'] = client_progress_update.get('badges', user_progress.get('badges', []))
-
-        # --- Server-Side Gamification Logic Application ---
-        event_data = client_data_payload.get('event_data', {})     # e.g., {"duration": 25}
+        event_data = client_data_payload.get('event_data', {})
 
         newly_awarded_badges = []
         leveled_up = False
@@ -430,7 +429,7 @@ def save_user_progress():
         if event_type_from_client == "session_completed":
             duration_minutes = event_data.get("duration", 0)
             if duration_minutes > 0:
-                # Server calculates XP for this session
+                # Server calculates XP for this session and adds to existing server XP
                 xp_earned_this_session = gamification_logic.calculate_xp_for_session(duration_minutes, gamification_settings)
                 user_progress['xp'] = user_progress.get('xp', 0) + xp_earned_this_session
                 
@@ -440,17 +439,16 @@ def save_user_progress():
 
                 # Add to session history (server-authoritative part)
                 session_entry = {
-                    'type': 'work', # Assuming session_completed is always 'work'
+                    'type': 'work', 
                     'duration': duration_minutes,
                     'date': datetime.now(timezone.utc).isoformat(),
-                    'xp_earned': xp_earned_this_session # Store XP earned for this session
+                    'xp_earned': xp_earned_this_session 
                 }
                 if 'sessionHistory' not in user_progress or not isinstance(user_progress['sessionHistory'], list):
                     user_progress['sessionHistory'] = []
                 user_progress['sessionHistory'].append(session_entry)
-                # Optional: Keep session history sorted and trimmed (already handled in GET, but can be done here too)
                 user_progress['sessionHistory'].sort(key=lambda x: x.get('date', ''), reverse=True)
-                user_progress['sessionHistory'] = user_progress['sessionHistory'][:50] # Keep last 50, for example
+                user_progress['sessionHistory'] = user_progress['sessionHistory'][:50]
 
             # Update streak (always do this if a session was completed)
             gamification_logic.update_study_streak(user_progress)
@@ -462,15 +460,10 @@ def save_user_progress():
             quest_event_info_time = {'type': 'study_time_added', 'value': duration_minutes}
             completed_quests_time = gamification_logic.update_quest_progress(user_progress, gamification_settings, quest_event_info_time)
 
-            # Combine completed quest titles (if any)
             all_completed_quest_titles = list(set(completed_quests_session + completed_quests_time))
-            if all_completed_quest_titles:
-                 # Notify client about completed quests (details below)
-                 pass # Will add flash or return data later
 
             # Check for level up after XP changes from quests or session
             leveled_up = gamification_logic.check_for_levelup(user_progress, gamification_settings)
-            # if leveled_up: notify client
 
             # Check for badges
             session_event_info = {
@@ -479,7 +472,23 @@ def save_user_progress():
                 'time_completed_hour_utc': datetime.now(timezone.utc).hour
             }
             newly_awarded_badges = gamification_logic.check_and_award_badges(user_progress, gamification_settings, session_event_info)
-            # if newly_awarded_badges: notify client
+        else:
+            # This is a general sync (e.g., from 'beforeunload' or after a break session)
+            # Do NOT update XP, Level, or Badges from client here. Server's values are authoritative.
+            # Log if client attempts to send differing values for debugging.
+            if 'xp' in client_progress_update and client_progress_update['xp'] != user_progress.get('xp'):
+                print(f"[SYNC_INFO] Client sent XP {client_progress_update['xp']}. Server XP is {user_progress.get('xp')}. Server value preserved.")
+            if 'level' in client_progress_update and client_progress_update['level'] != user_progress.get('level'):
+                print(f"[SYNC_INFO] Client sent Level {client_progress_update['level']}. Server Level is {user_progress.get('level')}. Server value preserved.")
+            if 'badges' in client_progress_update and set(client_progress_update.get('badges',[])) != set(user_progress.get('badges',[])):
+                 print(f"[SYNC_INFO] Client sent Badges. Server badges preserved.")
+            
+            # If client sends sessionHistory during a general sync, we might merge it,
+            # but for now, session history is primarily driven by server-side session_completed events.
+            # The client's version of sessionHistory is mostly for UI consistency between full GETs.
+            # Let's ensure the server's sessionHistory isn't overwritten by a potentially stale client one.
+            if 'sessionHistory' in client_progress_update:
+                print(f"[SYNC_INFO] Client sent sessionHistory. Server's sessionHistory preserved.")
 
         # Ensure essential progress fields have default values after merge and logic
         user_progress.setdefault('level', 1)
@@ -1126,6 +1135,33 @@ def handle_join_room(data):
         else:
             print(f'[Socket] User {user_display_name} already in participants list for room {room_id}.')
         
+        # Get all active users in the room and prepare their video identities
+        identities = []
+        for sid_in_room, session_info in active_sessions.items():
+            if session_info['room_id'] == room_id:
+                try:
+                    # This must be the same hashing as in get_agora_token
+                    uid_int = abs(hash(session_info['user_id'])) % (2**32)
+                    identities.append({
+                        'agora_uid': uid_int,
+                        'display_name': session_info['display_name']
+                    })
+                except Exception as e:
+                    print(f"Error creating agora uid hash for user {session_info['user_id']}: {e}")
+
+        # Send the list of existing users to the NEW user who just joined
+        emit('existing_video_users', {'identities': identities}, room=request.sid)
+
+        # Announce the new user's video identity to EVERYONE in the room (including themselves)
+        try:
+            new_user_agora_uid = abs(hash(user_uid)) % (2**32)
+            emit('video_user_identity', {
+                'agora_uid': new_user_agora_uid,
+                'display_name': user_display_name,
+            }, room=room_id)
+        except Exception as e:
+            print(f"Error creating agora uid hash for new user {user_uid}: {e}")
+
         timer = room_data.get('timer', {})
         emit('room_timer_update', {
             'room': room_id,
@@ -1554,6 +1590,47 @@ def get_inspire_content():
         'prompt': prompt,
         'selected_meme_category': subreddit # Also return what was actually used
     })
+
+@app.route('/api/get_agora_token')
+@login_required
+def get_agora_token():
+    if not AGORA_APP_ID or not AGORA_APP_CERTIFICATE:
+        print("Agora App ID or Certificate not configured on the server.")
+        return jsonify({'error': 'Video service is not configured.'}), 500
+
+    user_id = session['user_id']
+    channel_name = request.args.get('channelName')
+
+    if not channel_name:
+        return jsonify({'error': 'Channel name is required'}), 400
+
+    # Tokens expire. 1 hour is a reasonable lifetime.
+    expire_time_in_seconds = 3600
+    current_timestamp = int(time.time())
+    privilege_expired_ts = current_timestamp + expire_time_in_seconds
+
+    # UID can be an integer. We create a unique integer from the string UID.
+    # Note: Agora UIDs must be 32-bit unsigned integers.
+    try:
+        # A simple hashing mechanism to convert string UID to an integer UID
+        uid_int = abs(hash(user_id)) % (2**32)
+    except Exception:
+        # Fallback if hashing fails
+        uid_int = 0
+
+    try:
+        token = RtcTokenBuilder.buildTokenWithUid(
+            AGORA_APP_ID,
+            AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid_int,
+            0, # Role_Attendee
+            privilege_expired_ts
+        )
+        return jsonify({'token': token, 'appId': AGORA_APP_ID, 'uid': uid_int})
+    except Exception as e:
+        print(f"Error generating Agora token: {e}")
+        return jsonify({'error': 'Could not generate video session token.'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
