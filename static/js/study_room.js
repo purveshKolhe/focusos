@@ -1143,11 +1143,32 @@ async function initVideoCall() {
     } catch (error) {
         console.error('[Agora] Failed to initialize video call', error);
         const videoPanel = document.getElementById('video-panel');
+        
+        let userFriendlyMessage = 'Could not start video call. Please check console for errors and make sure camera permissions are allowed.';
+
+        // Check for specific Agora SDK error codes to provide better user feedback
+        if (error && error.code) {
+            switch (error.code) {
+                case 'PERMISSION_DENIED':
+                    userFriendlyMessage = 'Camera permission denied. Please allow camera access in your browser settings and refresh the page.';
+                    break;
+                case 'DEVICE_NOT_FOUND':
+                    userFriendlyMessage = 'No camera device found. Please ensure a camera is connected and enabled.';
+                    break;
+                case 'DEVICE_IN_USE':
+                    userFriendlyMessage = 'The camera is already in use by another application. Please close it and refresh the page.';
+                    break;
+                default:
+                    console.log(`[Agora] Unhandled error code: ${error.code}`);
+                    break;
+            }
+        }
+
         if (videoPanel) {
-            videoPanel.innerHTML = `<div class="text-red-400 text-center p-8">Could not start video call. Please check console for errors and make sure camera permissions are allowed.</div>`;
+            videoPanel.innerHTML = `<div class="text-red-400 text-center p-8">${userFriendlyMessage}</div>`;
         }
         if(typeof addNotification === 'function') {
-            addNotification("Video Error", "Could not start video call. Check camera permissions.", "error");
+            addNotification("Video Error", userFriendlyMessage, "error");
         }
     }
 }
