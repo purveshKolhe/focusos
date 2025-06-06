@@ -1637,4 +1637,4 @@ if __name__ == '__main__':
     # Use Gunicorn for production, Flask dev server for development
     # The 'eventlet' or 'gevent' async_mode for SocketIO is usually preferred with Gunicorn.
     # For Flask dev server, 'threading' is fine.
-    socketio.run(app, host='0.0.0.0', port=port, debug=True) # Added debug=True for dev        
+    socketio.run(app, host='0.0.0.0', port=port, debug=False) # Added debug=True for dev        
