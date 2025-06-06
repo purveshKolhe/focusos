@@ -1019,7 +1019,7 @@ def study_room(room_id):
                          firebase_custom_token_for_client=firebase_custom_token_for_client,
                          session_user_id_for_debug=session_user_id_for_debug)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 def get_room_ref(room_id):
     db_client = initialize_firebase()
@@ -1637,4 +1637,5 @@ if __name__ == '__main__':
     # Use Gunicorn for production, Flask dev server for development
     # The 'eventlet' or 'gevent' async_mode for SocketIO is usually preferred with Gunicorn.
     # For Flask dev server, 'threading' is fine.
-    socketio.run(app, host='0.0.0.0', port=port, debug=False) # Added debug=True for dev        
+    # NOTE: This block is for local development only. Render will use the Gunicorn start command.
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
