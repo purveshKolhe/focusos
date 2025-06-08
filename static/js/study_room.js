@@ -1120,22 +1120,54 @@ async function initVideoCall() {
         // 4. Create and publish local video track (no audio)
         localVideoTrack = await AgoraRTC.createCameraVideoTrack();
         
-        // Create player container
+        // Create player wrapper and container
+        const localPlayerWrapper = document.createElement('div');
+        localPlayerWrapper.className = 'video-player-wrapper';
+
         const localPlayerContainer = document.createElement('div');
         localPlayerContainer.id = `player-container-${agoraUid}`;
         localPlayerContainer.className = 'video-player-container is-local';
         
-        // Add container to the grid FIRST
-        document.getElementById('video-grid-container').append(localPlayerContainer);
+        localPlayerWrapper.appendChild(localPlayerContainer);
+        
+        // Add wrapper to the grid
+        document.getElementById('video-grid-container').append(localPlayerWrapper);
 
         // Play video in the container, this will create child elements from Agora
         localVideoTrack.play(localPlayerContainer);
 
-        // NOW, add the user info overlay on top
+        // NOW, add the user info overlay on top (inside container)
         const userInfo = document.createElement('div');
         userInfo.className = 'video-user-info';
         userInfo.innerHTML = `<span class="username">${currentUsername} (You)</span>`;
         localPlayerContainer.appendChild(userInfo);
+
+        // Add Video Controls (inside wrapper)
+        const controlsContainer = document.createElement('div');
+        controlsContainer.className = 'video-controls';
+
+        const videoBtn = document.createElement('button');
+        videoBtn.id = 'toggle-video-btn';
+        videoBtn.className = 'control-btn';
+        videoBtn.innerHTML = '<i class="fas fa-video"></i>';
+        videoBtn.title = 'Turn camera off';
+
+        videoBtn.addEventListener('click', () => {
+            if (localVideoTrack.enabled) {
+                localVideoTrack.setEnabled(false);
+                videoBtn.innerHTML = '<i class="fas fa-video-slash"></i>';
+                videoBtn.title = 'Turn camera on';
+                videoBtn.classList.add('danger');
+            } else {
+                localVideoTrack.setEnabled(true);
+                videoBtn.innerHTML = '<i class="fas fa-video"></i>';
+                videoBtn.title = 'Turn camera off';
+                videoBtn.classList.remove('danger');
+            }
+        });
+
+        controlsContainer.appendChild(videoBtn);
+        localPlayerWrapper.appendChild(controlsContainer);
 
         await agoraClient.publish([localVideoTrack]);
         console.log('[Agora] Local video track published');
@@ -1179,14 +1211,20 @@ async function handleUserPublished(user, mediaType) {
 
     if (mediaType === 'video') {
         remoteUsers[user.uid] = user;
+
+        const remotePlayerWrapper = document.createElement('div');
+        remotePlayerWrapper.className = 'video-player-wrapper';
+
         const remotePlayerContainer = document.createElement('div');
         remotePlayerContainer.id = `player-container-${user.uid}`;
         remotePlayerContainer.className = 'video-player-container';
         
+        remotePlayerWrapper.appendChild(remotePlayerContainer);
+        
         const displayName = agoraUidToNameMap[user.uid] || `User ${user.uid}`;
         
-        // Add container to grid
-        document.getElementById('video-grid-container').append(remotePlayerContainer);
+        // Add wrapper to grid
+        document.getElementById('video-grid-container').append(remotePlayerWrapper);
         
         // Play video track first
         user.videoTrack.play(remotePlayerContainer);
@@ -1201,9 +1239,9 @@ async function handleUserPublished(user, mediaType) {
 
 function handleUserLeft(user) {
     delete remoteUsers[user.uid];
-    const playerContainer = document.getElementById(`player-container-${user.uid}`);
-    if (playerContainer) {
-        playerContainer.remove();
+    const playerWrapper = document.getElementById(`player-container-${user.uid}`)?.closest('.video-player-wrapper');
+    if (playerWrapper) {
+        playerWrapper.remove();
     }
     console.log(`[Agora] User ${user.uid} left`);
 }
