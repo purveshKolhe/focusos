@@ -321,15 +321,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Tab Navigation System
         $(".nav-tab").click(function() {
             const targetPanel = $(this).data("target");
-            
+
             // Update active tab
             $(".nav-tab").removeClass("active");
             $(this).addClass("active");
-            
+
             // Show target panel
             $(".content-panel").removeClass("active");
             $("#" + targetPanel).addClass("active");
-            
+
             if (targetPanel === 'guide-panel') {
                 renderGamificationGuide(); // Render guide when tab is clicked
             }
