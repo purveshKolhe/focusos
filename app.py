@@ -62,6 +62,13 @@ if app.secret_key == SECRET_KEY_FALLBACK:
 AGORA_APP_ID = os.environ.get('AGORA_APP_ID')
 AGORA_APP_CERTIFICATE = os.environ.get('AGORA_APP_CERTIFICATE')
 
+# --- Jitsi Fallback Configuration (Placeholder for future use) ---
+# To use Jitsi as a fallback, you would typically set your Jitsi domain.
+# For the public Jitsi Meet service, this would be 'meet.jit.si'.
+# No app ID or certificate is needed for the basic public service.
+JITSI_DOMAIN = os.environ.get('JITSI_DOMAIN', 'meet.jit.si')
+VIDEO_SERVICE_PROVIDER = 'jitsi' if not AGORA_APP_ID else 'agora'
+
 # Initialize Firebase
 try:
     db = initialize_firebase()
@@ -627,7 +634,7 @@ vision_model = genai.GenerativeModel(
 )
 
 SYSTEM_PROMPT = """
-You are Daphinix, an AI chatbot created by Purvesh Kolhe.
+You are Daphinix, an AI chatbot meticulously crafted by Purvesh Kolhe.
 Don't keep buttering about Purvesh Kolhe. Only say that when someone asks who made you. Do not praise him or say anything about him.
 You must assist with studies, provide helpful and practical advice, 
 and engage in humorous conversations, using about 2% emojis naturally.
