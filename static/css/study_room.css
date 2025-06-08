@@ -737,13 +737,18 @@ textarea#chat-input:focus {
     }
 }
 
+.video-player-wrapper {
+    position: relative;
+    width: 100%;
+}
+
 .video-player-container {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9; /* Modern way to maintain aspect ratio */
     background-color: #1a1a1a;
     border-radius: 0.75rem;
-    overflow: hidden;
+    overflow: hidden; /* Reverted to hidden to clip the video correctly */
     box-shadow: 0 4px_10px rgba(0, 0, 0, 0.5);
     border: 2px solid transparent;
     transition: all 0.3s ease;
@@ -763,23 +768,67 @@ textarea#chat-input:focus {
 }
 
 .video-player-container.is-local {
-    border-color: #8b5cf6; /* Highlight local user's video */
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+    border: 2px solid #8B5CF6; /* A shade of purple to indicate it's the local user */
 }
 
 .video-user-info {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.5rem 0.75rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+    bottom: 8px;
+    left: 8px;
+    background-color: rgba(0, 0, 0, 0.6);
     color: white;
-    font-size: 0.875rem;
-    z-index: 10;
-    transition: opacity 0.3s ease;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    z-index: 10; /* Ensure it's above the video stream */
+}
+
+/* Added for video controls */
+.video-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    padding: 5px;
+    border-radius: 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10; /* Ensure it's above the video stream */
+}
+
+.video-player-wrapper:hover .video-controls {
+    opacity: 1;
+}
+
+.control-btn {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.control-btn:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.control-btn.danger {
+    background-color: #ef4444; /* red-500 */
+}
+
+.control-btn.danger:hover {
+    background-color: #dc2626; /* red-600 */
 }
 
 .video-grid {
