@@ -1017,7 +1017,7 @@ def study_room(room_id):
                          firebase_custom_token_for_client=firebase_custom_token_for_client,
                          session_user_id_for_debug=session_user_id_for_debug)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 def get_room_ref(room_id):
     db_client = initialize_firebase()
@@ -1802,4 +1802,4 @@ def sana_chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     # When you're done debugging, you can remove use_reloader=False
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
