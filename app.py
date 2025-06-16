@@ -14,7 +14,7 @@ load_dotenv(dotenv_path=dotenv_path)
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, flash, session
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, flash, session, abort
 import google.generativeai as genai
 from flask_cors import CORS
 import base64
@@ -619,16 +619,16 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
 ]
 
-# Initialize text-only model (using model name from old.py)
+# Initialize text-only model (
 text_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash", # Updated to gemini-1.5-flash as requested
+    model_name="gemini-2.0-flash", 
     generation_config=generation_config,
     safety_settings=safety_settings
 )
 
 # Initialize multimodal model for image processing (using model name from old.py)
 vision_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash", # Using primary vision model from old.py
+    model_name="gemini-2.0-flash", # Using primary vision model from old.py
     generation_config=generation_config,
     safety_settings=safety_settings
 )
@@ -821,20 +821,11 @@ def custom_chat(user_message, memory=None):
     
     return response_text
 
-@app.route('/list_models')
-def list_models():
-    """List available Gemini models for debugging."""
-    try:
-        models = genai.list_models()
-        model_names = [model.name for model in models]
-        return jsonify({'available_models': model_names})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 def process_image_request(image_pil, user_input, memory=None):
     """Process requests with images using Gemini Vision."""
     try:
-        # Primary vision model (gemini-1.5-flash, as set above)
+        # Primary vision model (gemini-2.5-flash, as set above)
         # vision_model is already initialized globally
         
         img_byte_arr = BytesIO()
@@ -1026,7 +1017,7 @@ def study_room(room_id):
                          firebase_custom_token_for_client=firebase_custom_token_for_client,
                          session_user_id_for_debug=session_user_id_for_debug)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 def get_room_ref(room_id):
     db_client = initialize_firebase()
@@ -1169,16 +1160,31 @@ def handle_join_room(data):
         except Exception as e:
             print(f"Error creating agora uid hash for new user {user_uid}: {e}")
 
-        timer = room_data.get('timer', {})
-        emit('room_timer_update', {
+        timer_data = room_data.get('timer', {})
+        # Ensure defaults for the emit, similar to get_room_timer_state
+        timer_data.setdefault('workDuration', 25)
+        timer_data.setdefault('breakDuration', 5)
+        timer_data.setdefault('isWorkSession', True)
+        timer_data.setdefault('isRunning', False)
+        # Set timeLeft based on current session type and duration if not already running or 0
+        if not timer_data['isRunning'] or timer_data.get('timeLeft', 0) == 0:
+            default_time = timer_data['workDuration'] * 60 if timer_data['isWorkSession'] else timer_data['breakDuration'] * 60
+            timer_data.setdefault('timeLeft', default_time)
+        else:
+            timer_data.setdefault('timeLeft', 0) # Fallback if timeLeft is missing while running (should not happen)
+
+        # Emit only to the joining user (request.sid)
+        # Use a structure consistent with emit_timer_update for the data payload
+        socketio.emit('room_timer_update', {
             'room': room_id,
-            'isRunning': timer.get('isRunning', False),
-            'isPaused': not timer.get('isRunning', False), # isPaused is inverse of isRunning
-            'isWorkSession': timer.get('isWorkSession', True),
-            'timeLeft': timer.get('timeLeft', 25 * 60),
-            'workDuration': timer.get('workDuration', 25),
-            'breakDuration': timer.get('breakDuration', 5)
-        }, room=request.sid)
+            'isRunning': timer_data.get('isRunning', False),
+            'isPaused': not timer_data.get('isRunning', False),
+            'isWorkSession': timer_data.get('isWorkSession', True),
+            'timeLeft': timer_data.get('timeLeft', 0),
+            'workDuration': timer_data.get('workDuration', 25),
+            'breakDuration': timer_data.get('breakDuration', 5)
+        }, room=request.sid) # Emit only to the user joining
+        print(f"[JOIN ROOM EMIT] Emitted initial timer state to {request.sid} for room {room_id}: {timer_data}")
     else:
         print(f"[Socket Join Error] Room {room_id} does not exist. User {user_display_name} cannot join.")
         emit('join_error', {'message': f"Room '{room_id}' not found."}, room=request.sid)
@@ -1268,132 +1274,156 @@ def get_room_participants(room_id):
 room_timers = {}  # room_id -> {'thread': Thread, 'stop_event': Event}
 
 def start_room_timer(room_id):
-    db_client = initialize_firebase()
-    room_ref = db_client.collection('rooms').document(room_id)
+    # db_client = initialize_firebase() # db is already globally available
+    room_ref = db.collection('rooms').document(room_id)
     stop_event = threading.Event()
-    
+
     def timer_thread():
         while not stop_event.is_set():
             try:
                 room_doc = room_ref.get()
                 if not room_doc.exists:
+                    print(f"[Timer Thread {room_id}] Room document no longer exists. Stopping timer.")
                     break
-                    
+
                 timer = room_doc.to_dict().get('timer', {})
                 if not timer.get('isRunning', False):
-                    break
-                    
+                    print(f"[Timer Thread {room_id}] Timer is not running (read from DB). Stopping thread.")
+                    break # Timer was paused or stopped externally
+
                 time_left = timer.get('timeLeft', 0)
                 if time_left <= 0:
                     # Auto-switch session
                     is_work = timer.get('isWorkSession', True)
                     work_duration = timer.get('workDuration', 25)
                     break_duration = timer.get('breakDuration', 5)
-                    timer['isWorkSession'] = not is_work
-                    timer['timeLeft'] = (work_duration if not is_work else break_duration) * 60
-                    timer['isRunning'] = False # Stop timer after switching
-                    room_ref.set({'timer': timer}, merge=True)
-                    socketio.emit('room_timer_update', {
-                        'room': room_id,
-                        'isRunning': timer['isRunning'],
-                        'isPaused': not timer['isRunning'],
-                        'isWorkSession': timer['isWorkSession'],
-                        'timeLeft': timer['timeLeft'],
-                        'workDuration': timer['workDuration'],
-                        'breakDuration': timer['breakDuration']
-                    }, room=room_id)
-                    break # Exit thread after timer completes and switches
                     
+                    timer['isWorkSession'] = not is_work
+                    timer['timeLeft'] = (work_duration * 60) if timer['isWorkSession'] else (break_duration * 60)
+                    timer['isRunning'] = False # Stop timer after switching
+                    
+                    print(f"[Timer Thread {room_id}] Session ended. New session: {'Work' if timer['isWorkSession'] else 'Break'}, TimeLeft: {timer['timeLeft']}")
+                    room_ref.set({'timer': timer}, merge=True) # Update Firestore first
+                    
+                    emit_timer_update(room_id, timer) # Use helper
+                    stop_room_timer(room_id) # Ensure this specific thread instance stops
+                    break # Exit thread after timer completes and switches
+
                 timer['timeLeft'] = time_left - 1
-                room_ref.set({'timer': timer}, merge=True)
-                socketio.emit('room_timer_update', {
-                    'room': room_id,
-                    'isRunning': timer['isRunning'],
-                    'isPaused': not timer['isRunning'],
-                    'isWorkSession': timer['isWorkSession'],
-                    'timeLeft': timer['timeLeft'],
-                    'workDuration': timer['workDuration'],
-                    'breakDuration': timer['breakDuration']
-                }, room=room_id)
+                room_ref.set({'timer': timer}, merge=True) # Update Firestore with new timeLeft
+                
+                # Emit update every second
+                emit_timer_update(room_id, timer) # Use helper
                 time.sleep(1)
             except Exception as e:
                 print(f"Error in timer thread for room {room_id}: {e}")
+                stop_room_timer(room_id) # Ensure cleanup on error
                 break # Exit thread on error
-                
+        print(f"[Timer Thread {room_id}] Exiting.")
+
+    # Before starting a new thread, ensure any old one for this room is stopped.
+    stop_room_timer(room_id) 
     t = threading.Thread(target=timer_thread, daemon=True)
     t.start()
     room_timers[room_id] = {'thread': t, 'stop_event': stop_event}
+    print(f"[Timer System] New timer thread created and started for room {room_id}")
 
 def stop_room_timer(room_id):
-    if room_id in room_timers:
-        room_timers[room_id]['stop_event'].set()
-        # Wait for the thread to finish (optional, with timeout)
+    timer_info = room_timers.pop(room_id, None)
+    if timer_info:
+        timer_info['stop_event'].set()
         try:
-            room_timers[room_id]['thread'].join(timeout=2.0) 
+            timer_info['thread'].join(timeout=1.0) # Reduced timeout
+            print(f"[Timer Control] Successfully stopped and joined timer thread for room {room_id}")
         except Exception as e:
-            print(f"Error joining timer thread for room {room_id}: {e}")
-        room_timers.pop(room_id, None)
-        print(f"Stopped timer thread for room {room_id}")
+            print(f"[Timer Control] Error joining timer thread for room {room_id}: {e}")
+    # else:
+        # print(f"[Timer Control] No active timer thread found to stop for room {room_id}")
 
-@socketio.on('room_timer_control') # Changed event name for clarity
+@socketio.on('room_timer_control')
 def handle_room_timer_control(data):
-    room_id = data['room']
-    action = data.get('action') # 'start', 'pause', 'reset', 'duration_change'
-    
-    db_client = initialize_firebase()
-    room_ref = db_client.collection('rooms').document(room_id)
+    room_id = data.get('room')
+    action = data.get('action')
+    user_id = data.get('user_id', 'Unknown User') # Get user_id if available
+
+    print(f"[TIMER CONTROL EVENT] Received action '{action}' for room '{room_id}' from user '{user_id}'. Data: {data}")
+
+    if not room_id or not action:
+        print(f"[TIMER CONTROL ERROR] Room ID or action missing: {data}")
+        return
+
+    room_ref = db.collection('rooms').document(room_id)
     room_doc = room_ref.get()
+
     if not room_doc.exists:
-        print(f"Room {room_id} not found for timer control.")
+        print(f"[TIMER CONTROL ERROR] Room {room_id} not found.")
         return
 
     timer_data = room_doc.to_dict().get('timer', {})
-    # Ensure defaults
-    timer_data.setdefault('timeLeft', 25 * 60)
-    timer_data.setdefault('isWorkSession', True)
-    timer_data.setdefault('isRunning', False)
+    # Ensure defaults are set if not present
     timer_data.setdefault('workDuration', 25)
     timer_data.setdefault('breakDuration', 5)
-    
+    timer_data.setdefault('isWorkSession', True)
+    timer_data.setdefault('isRunning', False)
+    # Set timeLeft based on current session type and duration if not already running
+    if not timer_data['isRunning']:
+        default_time = timer_data['workDuration'] * 60 if timer_data['isWorkSession'] else timer_data['breakDuration'] * 60
+        timer_data.setdefault('timeLeft', default_time)
+
+    print(f"[TIMER CONTROL] Room: {room_id}, Action: {action}, User: {user_id}, Current Timer: {timer_data}")
+
     if action == 'start':
         if not timer_data['isRunning']:
             timer_data['isRunning'] = True
-            stop_room_timer(room_id) # Stop any existing timer before starting new
+            if timer_data['timeLeft'] <= 0:
+                timer_data['timeLeft'] = timer_data['workDuration'] * 60 if timer_data['isWorkSession'] else timer_data['breakDuration'] * 60
+            room_ref.set({'timer': timer_data}, merge=True)
             start_room_timer(room_id)
+            print(f"[TIMER ACTION] Started timer for room {room_id} by {user_id}")
     elif action == 'pause':
         if timer_data['isRunning']:
             timer_data['isRunning'] = False
             stop_room_timer(room_id)
+            print(f"[TIMER ACTION] Paused timer for room {room_id} by {user_id}")
     elif action == 'reset':
         timer_data['isRunning'] = False
-        timer_data['timeLeft'] = (timer_data['workDuration'] if timer_data['isWorkSession'] else timer_data['breakDuration']) * 60
         stop_room_timer(room_id)
+        timer_data['isWorkSession'] = True
+        timer_data['timeLeft'] = timer_data['workDuration'] * 60
+        print(f"[TIMER ACTION] Reset timer for room {room_id} by {user_id}")
     elif action == 'duration_change':
         new_work_duration = data.get('workDuration', timer_data['workDuration'])
         new_break_duration = data.get('breakDuration', timer_data['breakDuration'])
-        timer_data['workDuration'] = int(new_work_duration)
-        timer_data['breakDuration'] = int(new_break_duration)
-        # If timer is not running and it's a work session, update timeLeft to new work duration
+        try:
+            new_work_duration = int(new_work_duration)
+            new_break_duration = int(new_break_duration)
+            if new_work_duration <= 0 or new_break_duration <= 0:
+                raise ValueError("Durations must be positive.")
+        except (ValueError, TypeError):
+            print(f"[TIMER CONTROL ERROR] Invalid duration values: {data}")
+            socketio.emit('room_timer_error', {'room': room_id, 'message': 'Invalid timer durations provided.'}, room=room_id)
+            return
+        timer_data['workDuration'] = new_work_duration
+        timer_data['breakDuration'] = new_break_duration
         if not timer_data['isRunning']:
             if timer_data['isWorkSession']:
-                timer_data['timeLeft'] = timer_data['workDuration'] * 60
+                timer_data['timeLeft'] = new_work_duration * 60
             else:
-                timer_data['timeLeft'] = timer_data['breakDuration'] * 60
-        # If it was running, the change will apply next time it's reset or switched.
-        # Or, you could choose to reset it immediately if durations change while running.
-        # For now, keep it simple: duration changes affect reset or next session.
-    
+                timer_data['timeLeft'] = new_break_duration * 60
+        print(f"[TIMER ACTION] Durations changed for room {room_id} by {user_id}. New WD: {new_work_duration}, BD: {new_break_duration}")
     room_ref.set({'timer': timer_data}, merge=True)
-    
-    # Broadcast timer state to all clients in the room
+    emit_timer_update(room_id, timer_data)
+
+def emit_timer_update(room_id, timer_data):
+    print(f"[EMIT TIMER] Emitting timer update to room {room_id}: {timer_data}")
     socketio.emit('room_timer_update', {
         'room': room_id,
-        'isRunning': timer_data['isRunning'],
-        'isPaused': not timer_data['isRunning'], # Derived property
-        'isWorkSession': timer_data['isWorkSession'],
-        'timeLeft': timer_data['timeLeft'],
-        'workDuration': timer_data['workDuration'],
-        'breakDuration': timer_data['breakDuration']
+        'isRunning': timer_data.get('isRunning', False),
+        'isPaused': not timer_data.get('isRunning', False),
+        'isWorkSession': timer_data.get('isWorkSession', True),
+        'timeLeft': timer_data.get('timeLeft', 0),
+        'workDuration': timer_data.get('workDuration', 25),
+        'breakDuration': timer_data.get('breakDuration', 5)
     }, room=room_id)
 
 @app.route('/api/room_timer_state/<room_id>')
@@ -1405,16 +1435,25 @@ def get_room_timer_state(room_id):
         if room_doc.exists:
             timer = room_doc.to_dict().get('timer', {})
             # Add defaults if missing
-            timer.setdefault('timeLeft', 25*60)
+            timer.setdefault('timeLeft', 25*60) # Default timeLeft if not present
             timer.setdefault('isWorkSession', True)
             timer.setdefault('isRunning', False)
             timer.setdefault('workDuration', 25)
             timer.setdefault('breakDuration', 5)
+            # If not running and timeLeft is 0, set to current session's duration
+            if not timer['isRunning'] and timer['timeLeft'] == 0:
+                if timer['isWorkSession']:
+                    timer['timeLeft'] = timer['workDuration'] * 60
+                else:
+                    timer['timeLeft'] = timer['breakDuration'] * 60
             return jsonify(timer)
         else:
+            # If room doesn't exist or has no timer, provide default state
+            print(f"[TIMER STATE] Room {room_id} not found or no timer data, returning defaults.")
             return jsonify({'timeLeft': 25*60, 'isWorkSession': True, 'isRunning': False, 'workDuration': 25, 'breakDuration': 5})
     except Exception as e:
         print(f"Error fetching timer state for room {room_id}: {e}")
+        # Fallback to default state on error
         return jsonify({'timeLeft': 25*60, 'isWorkSession': True, 'isRunning': False, 'workDuration': 25, 'breakDuration': 5})
 
 # Start orphaned room cleanup thread after Firebase and app initialization
@@ -1638,6 +1677,60 @@ def get_agora_token():
     except Exception as e:
         print(f"Error generating Agora token: {e}")
         return jsonify({'error': 'Could not generate video session token.'}), 500
+
+# --- Admin Content Management Page ---
+ADMIN_UID = 'qcXUVU60eDaDMiO3rxcmfcLuL5B2'  # Replace with your Firebase UID
+
+@app.route('/admin/content', methods=['GET', 'POST'])
+@login_required
+def admin_content():
+    if session.get('user_id') != ADMIN_UID:
+        abort(403)
+    db_client = initialize_firebase()
+    msg = None
+    if request.method == 'POST':
+        form = request.form
+        # Add Background
+        if form.get('bg_name') and form.get('bg_video_url'):
+            # Add to Firestore only
+            db_client.collection('backgrounds').add({
+                'name': form['bg_name'],
+                'type': 'video',
+                'category': form.get('bg_category', 'nature'),
+                'path': form['bg_video_url'],
+                'preview': form.get('bg_thumbnail_url', form['bg_video_url'])
+            })
+            msg = 'Background added!'
+        # Add BGM
+        elif form.get('bgm_name') and form.get('bgm_audio_url'):
+            db_client.collection('bgms').add({
+                'name': form['bgm_name'],
+                'audio_url': form['bgm_audio_url']
+            })
+            msg = 'BGM added!'
+        # Add Badge
+        elif form.get('badge_name'):
+            db_client.collection('badges').add({
+                'name': form['badge_name'],
+                'description': form.get('badge_description', ''),
+                'icon': form.get('badge_icon', '')
+            })
+            msg = 'Badge added!'
+        # Add Quest
+        elif form.get('quest_title'):
+            db_client.collection('quests').add({
+                'title': form['quest_title'],
+                'description': form.get('quest_description', ''),
+                'type': form.get('quest_type', ''),
+                'xp': int(form.get('quest_xp', 0))
+            })
+            msg = 'Quest added!'
+        return redirect(url_for('admin_content'))
+    backgrounds = [doc.to_dict() | {'id': doc.id} for doc in db_client.collection('backgrounds').stream()]
+    bgms = [doc.to_dict() | {'id': doc.id} for doc in db_client.collection('bgms').stream()]
+    badges = [doc.to_dict() | {'id': doc.id} for doc in db_client.collection('badges').stream()]
+    quests = [doc.to_dict() | {'id': doc.id} for doc in db_client.collection('quests').stream()]
+    return render_template('admin_content.html', backgrounds=backgrounds, bgms=bgms, badges=badges, quests=quests, msg=msg)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
