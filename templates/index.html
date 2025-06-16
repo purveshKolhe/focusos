@@ -162,6 +162,10 @@
                         <i class="fas fa-lightbulb"></i>
                         <span class="tab-text">Inspire</span>
                     </button>
+                    <button class="nav-tab" id="sana-tab" data-target="sana-panel">
+                        <i class="fas fa-child"></i>
+                        <span class="tab-text">Sana</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -715,6 +719,75 @@
                     <button id="refresh-inspire-content" class="btn-primary px-6 py-3 text-lg w-full sm:w-auto">
                         <i class="fas fa-sync-alt mr-2"></i>Get New Inspiration
                     </button>
+                </div>
+            </div>
+
+            <!-- Sana Mood Modal -->
+            <div id="sana-mood-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+                <div class="bg-gray-900 p-6 rounded-lg shadow-glow max-w-md w-full text-white border border-pink-400">
+                    <h3 class="text-xl font-bold mb-4 text-pink-300 text-center">How are you feeling right now?</h3>
+                    <form id="sana-mood-form" class="space-y-3">
+                        <div class="flex flex-wrap gap-3 justify-center">
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Stressed">😣 Stressed</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Unmotivated">😔 Unmotivated</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Happy">😊 Happy</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Anxious">😰 Anxious</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Tired">😴 Tired</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Confident">😎 Confident</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Overwhelmed">🥺 Overwhelmed</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="mood" value="Excited">🤩 Excited</label>
+                        </div>
+                        <div class="flex justify-end mt-4">
+                            <button type="button" id="sana-mood-next" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded">Next</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sana Panel (AI Mentor) -->
+            <div id="sana-panel" class="content-panel">
+                <div class="bg-black bg-opacity-60 text-white p-6 rounded-xl max-w-6xl mx-auto sana-theme w-full h-full flex flex-col">
+                    <h2 class="text-2xl font-bold mb-6 text-center text-pink-300">Have a heart-to-heart with Sana</h2>
+                    <div id="sana-container" class="flex flex-col flex-grow min-h-0">
+                        <!-- Chat Response Area -->
+                        <div id="sana-responseArea" class="daphinix-response-area flex-grow">
+                            <!-- Sana's messages will appear here -->
+                        </div>
+                        <!-- Input Area -->
+                        <div class="daphinix-input-container mt-4">
+                            <div class="relative flex items-center">
+                                <textarea 
+                                    id="sana-input" 
+                                    class="daphinix-input w-full bg-gray-800 bg-opacity-80 rounded-lg py-3 px-4 pr-12 resize-none" 
+                                    placeholder="Talk to Sana..." 
+                                    rows="1"
+                                ></textarea>
+                                <button id="sana-send-button" class="absolute right-3 rounded-full p-2 bg-pink-500 text-white hover:bg-pink-600 transition-all">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <div class="flex justify-end mt-2">
+                                <button id="clear-sana-chat" class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm flex items-center">
+                                    <i class="fas fa-trash-alt mr-1"></i> Clear Chat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Background Selection Modal -->
+            <div id="background-selection-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+                <div class="bg-gray-900 bg-opacity-90 border border-purple-500 rounded-2xl shadow-glow w-full max-w-6xl h-[90vh] flex flex-col">
+                    <div class="p-4 flex justify-between items-center border-b border-purple-500">
+                        <h2 class="text-2xl font-bold text-purple-300">Select Background</h2>
+                        <button id="close-background-modal" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="flex-grow overflow-y-auto">
+                        <!-- Background options will be rendered here -->
+                    </div>
                 </div>
             </div>
 
