@@ -1,9 +1,71 @@
 body {
+    font-family: 'Inter', sans-serif; /* Using Inter as an example, ensure it's imported or use a common fallback */
+    background-color: #1a1a1d; /* Dark background color, similar to the example's mood */
+    /* Consider adding a background image here for the full effect:
+       background-image: url('path/to/your/background-image.jpg');
+       background-size: cover;
+       background-position: center;
+       background-attachment: fixed; 
+    */
+    color: #f0f0f0; /* Light text color for contrast */
     margin: 0;
-    font-family: 'Poppins', sans-serif;
-    min-height: 100vh;
-    color: #f0f0f0;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    padding: 0;
+    line-height: 1.6;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+
+@media (max-width: 640px) {
+  #stats-panel {
+    width: 100%;
+    overflow-x: auto; /* Allow horizontal scrolling if content overflows */
+    padding-left: 0.5rem; /* Add some padding back */
+    padding-right: 0.5rem;
+    box-sizing: border-box;
+  }
+  #stats-panel > div, /* Assuming direct children are divs, adjust if necessary */
+  #stats-panel .stats-card,
+  #stats-panel #badges-list {
+    width: 100%;
+    min-width: 0; /* Allow shrinking */
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  #stats-panel .grid {
+    display: flex; /* Revert to flex for better control if needed, or keep block */
+    flex-wrap: wrap; /* Ensure items wrap */
+    justify-content: flex-start;
+  }
+  #stats-panel #badges-list {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    justify-content: flex-start !important;
+  }
+  #stats-panel .stats-card {
+    padding: 1rem 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    font-size: 0.9rem !important; /* Slightly smaller font for mobile */
+  }
+  /* Ensure tables within stats panel are scrollable if they are too wide */
+  #stats-panel table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Resetting some bootstrap defaults if they interfere, or ensuring our styles take precedence */
+h1, h2, h3, h4, h5, h6 {
+    color: #e0e0e0; /* Slightly brighter for headings */
+    margin-top: 0;
 }
 
 #background-container {
@@ -38,15 +100,26 @@ body {
 }
 
 /* Logo styling to match the provided sample */
-.logo-text {
-    font-family: "Almendra", serif;
-    font-weight: 700;
-    font-size: 1.8rem;
-    background: linear-gradient(90deg, #ff8a00, #e52e71);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0px 0px 15px rgba(229, 46, 113, 0.5);
-    letter-spacing: 0.5px;
+.logo-container {
+    /* Hide the text visually but keep it for accessibility */
+    text-indent: -9999px;
+    display: block; /* Ensure it's a block element */
+    width: 250px; /* Adjust width as needed */
+    background-image: url('logo.png');
+    background-size: contain; /* Scale the image nicely */
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+}
+
+/* Adjust size for smaller screens */
+@media (max-width: 640px) {
+    .logo {
+        width: 120px; /* Smaller width for mobile */
+        height: 40px; /* Smaller height for mobile */
+        margin-right: 0; /* Remove margin if it causes layout issues */
+    }
 }
 
 /* Vertical Navigation Bar */
@@ -71,11 +144,11 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    border-radius: 30%;
     padding: 0.5rem;
     background-color: rgba(255, 255, 255, 0.1);
     color: #f0f0f0;
     transition: all 0.3s ease;
-    border-radius: 0;
     width: 100%;
     border-left: 2px solid transparent;
     box-sizing: border-box;
@@ -117,100 +190,204 @@ body {
     opacity: 1;
 }
 
-/* Timer Circle */
+/* Timer Panel Content Alignment */
+#timer-panel.content-panel.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+    justify-content: center; /* Center content vertically */
+    opacity: 1;
+    padding-top: 2rem; /* Add some padding at the top */
+}
+
+/* Timer Circle - Adjusting size and appearance */
 .timer-circle {
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    background: rgba(157, 0, 255, 0.324);
-    box-shadow: 0 0 40px 10px #ae00ff78, 0 0 0 8px #f778f560 inset;
+    width: 320px; /* Increased width */
+    height: 220px; /* Increased height */
+    background-color: rgba(25, 25, 30, 0.7); /* Slightly darker, more opaque background */
+    border-radius: 30px; /* Slightly more pronounced rounding */
+    box-shadow: 0 0 20px rgba(128, 0, 128, 0.6), 0 0 40px rgba(128, 0, 128, 0.4); /* Enhanced glow */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: #e0e0e0; /* General text color inside timer */
     position: relative;
-    margin: 0 auto 1.5rem auto;
-    animation: timerPulse 2s infinite alternate;
+    margin: 0 auto 2rem auto; /* Increased bottom margin */
+    animation: timerPulse 3s infinite; /* Adjusted animation timing */
 }
 
-@keyframes timerPulse {
-    0% { box-shadow: 0 0 40px 10px #7300ff8e, 0 0 0 8px #8447ff inset; }
-    100% { box-shadow: 0 0 60px 20px #d02ee5, 0 0 0 12px hsl(324, 91%, 77%) inset; }
-}
-
-.timer-text {
-    font-size: 3.5rem;
-    font-weight: 800;
-    color: #fff;
-    font-family: 'Poppins', monospace;
-    letter-spacing: 2px;
-    text-shadow: 0 0 20px #e52e71, 0 0 40px #ff8a00;
-    margin-bottom: 0.5rem;
-    animation: timerTextGlow 1.5s infinite alternate;
-}
-
-@keyframes timerTextGlow {
-    0% { text-shadow: 0 0 20px #e52e71, 0 0 40px #ff8a00; }
-    100% { text-shadow: 0 0 40px #e52e71, 0 0 80px #ff8a00; }
-}
-
-.session-label {
-    font-size: 1.1rem;
-    color: #dbd1b65d;
-    font-weight: 600;
-    margin-top: 0.5rem;
+/* Timer Circle Heading (e.g., "Pomodoro Timer") */
+.timer-circle h2 {
+    font-size: 1.1rem; /* Slightly smaller to give more space to the time */
+    font-weight: 500;
+    margin-bottom: 0.75rem; /* Adjusted spacing */
+    color: #b0b0b0; /* Softer color for the heading */
+    text-transform: uppercase;
     letter-spacing: 1px;
-    text-shadow: 0 0 6px #9333EA88;
 }
 
-/* Timer Controls */
+/* Main Timer Text (e.g., 25:00) */
+.timer-text {
+    font-family: 'Inter', 'Poppins', sans-serif; /* Prioritize Inter if available, fallback to Poppins */
+    font-size: 5.5rem; /* Significantly larger timer text */
+    font-weight: 600; /* Bold but not overly so */
+    color: #ffffff; /* Bright white for high visibility */
+    line-height: 1;
+    margin-bottom: 0.5rem; /* Space below timer text */
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); /* Subtle white glow */
+    /* Removing the previous intense text-shadow animation for a cleaner look */
+    animation: None; 
+}
+
+/* Session Label (e.g., "Work Session") */
+.session-label {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    font-size: 1rem; /* Slightly larger */
+    font-weight: 400;
+    color: #a0a0a0; /* Softer color */
+    margin-top: 0.25rem;
+    letter-spacing: 0.5px;
+    text-shadow: none; /* Remove text shadow for cleaner look */
+}
+
+/* Timer Controls - General Styling */
+.w-full.max-w-xs.space-y-3.mb-5 { /* Targeting the container of timer buttons */
+        margin-bottom: 1.5rem; /* Adjusted margin */
+        display: flex; /* Make buttons side-by-side */
+        justify-content: center; /* Center the buttons */
+        align-items: center; /* Align items vertically */
+        gap: 1rem; /* Space between buttons */
+    }
+.timer-buttons-container { /* Added new rule for the button container */
+        display: flex;
+        gap: 1rem; /* Adjust the gap as needed */
+        width: 100%;
+    }
+
+
 #start-timer, #pause-timer, #reset-timer {
-    padding: 0.75rem 0;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    padding: 0.8rem 1.5rem; /* Larger buttons */
+    font-size: 1rem; 
+    font-weight: 500; /* Medium weight */
+    border: none; /* Remove default border */
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    /* Keeping existing btn-glow-purple if desired, or we can refine glow */
 }
 
-#start-timer {
-    background-color: #10B981;
+#start-timer i, #pause-timer i, #reset-timer i {
+    margin-right: 0.6rem; /* Space between icon and text (if text were visible) */
 }
+
+/* Specific button colors (can be adjusted) */
+#start-timer {
+        background-color: rgba(40, 167, 69, 0.3); /* Translucent green */
+        border: 1px solid rgba(40, 167, 69, 0.5); /* Subtle border */
+        text-align: center; /* Center text */
+        padding: 1.2rem 0; /* Adjust padding */
+        flex-grow: 1; /* Allow to grow */
+        width: auto; /* Allow flexbox to control width */
+        flex-shrink: 0;
+        box-sizing: border-box;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: white;
+        border-radius: 8px;
+        backdrop-filter: blur(5px); /* Gaussian blur */
+        transition: all 0.3s ease;
+    }
+
 
 #start-timer:hover {
-    background-color: #059669;
+    background-color: rgba(40, 167, 69, 0.6); /* More opaque on hover */
+    transform: translateY(-2px); /* Subtle lift effect */
 }
 
 #pause-timer {
-    background-color: #F59E0B;
+    background-color: rgba(255, 193, 7, 0.3); /* Translucent yellow */
+    border: 1px solid rgba(255, 193, 7, 0.5); /* Subtle border */
+    text-align: center; /* Center text */
+    padding: 1.2rem 0; /* Adjust padding */
+    flex-grow: 1; /* Allow to grow */
+    width: auto; /* Allow flexbox to control width */
+    flex-shrink: 0;
+    box-sizing: border-box;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    border-radius: 8px;
+    backdrop-filter: blur(5px); /* Gaussian blur */
+    transition: all 0.3s ease;
 }
 
 #pause-timer:hover {
-    background-color: #D97706;
+    background-color: rgba(255, 193, 7, 0.6); /* More opaque on hover */
+    transform: translateY(-2px); /* Subtle lift effect */
 }
 
 #reset-timer {
-    background-color: #EF4444;
-}
+        background-color: rgba(220, 53, 69, 0.3); /* Translucent red */
+        border: 1px solid rgba(220, 53, 69, 0.5); /* Subtle border */
+        text-align: center; /* Center text */
+        padding: 1.2rem 0; /* Adjust padding */
+        flex-grow: 1; /* Allow to grow */
+        width: auto; /* Allow flexbox to control width */
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: white;
+        border-radius: 8px;
+        backdrop-filter: blur(5px); /* Gaussian blur */
+        transition: all 0.3s ease;
+    }
+
 
 #reset-timer:hover {
-    background-color: #DC2626;
+    background-color: rgba(220, 53, 69, 0.6); /* More opaque on hover */
+    transform: translateY(-2px); /* Subtle lift effect */
 }
 
-/* Duration Inputs */
+/* Duration Inputs Styling */
 .duration-input {
-    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center labels and inputs */
+}
+
+.duration-input label {
+    font-size: 0.85rem;
+    color: #b0b0b0;
+    margin-bottom: 0.3rem;
 }
 
 .duration-field {
-    background-color: rgba(0, 0, 0, 0.5);
-    border: 1px solid #9333EA;
-    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f0f0f0;
+    border-radius: 6px;
     padding: 0.5rem;
-    border-radius: 4px;
-    width: 60px;
-    margin-top: 0.25rem;
+    width: 70px; /* Adjust width as needed */
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.duration-field:focus {
+    outline: none;
+    border-color: #800080; /* Purple focus */
+    box-shadow: 0 0 0 2px rgba(128, 0, 128, 0.3);
+}
+
+
+/* Ensure timerPulse animation is defined if not already (it was in previous context) */
+@keyframes timerPulse {
+    0% {
+        box-shadow: 0 0 20px rgba(128, 0, 128, 0.6), 0 0 40px rgba(128, 0, 128, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(160, 0, 160, 0.8), 0 0 60px rgba(160, 0, 160, 0.6);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(128, 0, 128, 0.6), 0 0 40px rgba(128, 0, 128, 0.4);
+    }
 }
 
 /* Settings Selects */
@@ -231,6 +408,128 @@ body {
     border-radius: 1rem;
     padding: 1.5rem;
     text-align: center;
+}
+
+/* Level Badge */
+.level-container {
+    display: flex;
+    align-items: center;
+    background-color: rgba(30, 30, 40, 0.7);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.level-badge {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #8a2be2, #4b0082);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(138, 43, 226, 0.4);
+}
+
+/* Badges and Quests */
+#badges-list {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: nowrap;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+.badge-item {
+    position: relative;
+}
+.badge-tooltip {
+    position: absolute;
+    z-index: 10;
+    top: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    visibility: hidden;
+    background: linear-gradient(135deg, #232946 80%, #3b3b4f 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px 22px 16px 22px;
+    min-width: 220px;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(44, 0, 80, 0.22), 0 2px 8px rgba(0,0,0,0.18);
+    font-size: 1rem;
+    font-weight: 400;
+    text-align: left;
+    pointer-events: none;
+    white-space: normal;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.badge-tooltip::after {
+    content: "";
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 12px 12px 12px;
+    border-style: solid;
+    border-color: transparent transparent #232946 transparent;
+    filter: drop-shadow(0 2px 4px rgba(44,0,80,0.12));
+}
+.badge-tooltip strong {
+    display: block;
+    font-size: 1.1em;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.badge-item:hover .badge-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+}
+.badge-item:hover .badge-icon {
+    transform: scale(1.18);
+    box-shadow: 0 8px 32px rgba(120, 0, 200, 0.22), 0 2px 8px rgba(0,0,0,0.18);
+}
+
+.badge-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.badge-name {
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.quest-item {
+    background-color: rgba(40, 40, 50, 0.7);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.quest-progress {
+    height: 6px;
+    background-color: rgba(138, 43, 226, 0.3);
+    border-radius: 3px;
+    margin-top: 0.5rem;
+}
+
+.quest-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #8a2be2, #4b0082);
+    border-radius: 3px;
 }
 
 /* Focus Mode Overlay */
@@ -855,7 +1154,7 @@ input:checked + .slider:before {
     padding: 8px;
     border-radius: 50%;
     transition: all 0.3s ease;
-    background: transparent;
+    background-color: rgba(29, 25, 25, 0.1);
     border: none;
     color: white;
 }
@@ -1354,34 +1653,41 @@ select {
 }
 
 /* Responsive Leaderboard Table */
-@media (max-width: 640px) { /* sm breakpoint or your preferred mobile breakpoint */
-    #leaderboard-panel .overflow-hidden.shadow-lg {
-        overflow-x: auto; /* Enable horizontal scrolling for the table container */
+@media (max-width: 640px) {
+    /* Responsive fixes for all leaderboard and stats panels */
+    #leaderboard-panel .overflow-hidden.shadow-lg,
+    #stats-panel .overflow-hidden.shadow-lg,
+    .content-panel .overflow-hidden.shadow-lg {
+        overflow-x: auto;
     }
-
-    #leaderboard-panel table {
-        /* min-width might not be strictly needed if parent scrolls,
-           but can ensure table doesn't try to shrink too aggressively */
-        /* min-width: 600px; /* Adjust as needed based on content */
+    #leaderboard-panel table,
+    #stats-panel table,
+    .content-panel table {
+        min-width: 600px;
     }
-
-    /* Optional: Slightly reduce padding on table cells for mobile to save space */
     #leaderboard-panel th,
-    #leaderboard-panel td {
-        padding: 0.6rem 0.5rem; /* Reduced padding */
-        font-size: 0.75rem; /* Slightly smaller font on mobile */
-        white-space: nowrap; /* Prevent text wrapping in cells that might cause vertical stretch */
+    #leaderboard-panel td,
+    #stats-panel th,
+    #stats-panel td,
+    .content-panel th,
+    .content-panel td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
     }
-
-    #leaderboard-panel .leaderboard-filter-btn {
-        padding: 0.5rem 0.75rem; /* Adjust button padding */
+    #leaderboard-panel .leaderboard-filter-btn,
+    #stats-panel .leaderboard-filter-btn,
+    .content-panel .leaderboard-filter-btn {
+        padding: 0.5rem 0.75rem;
         font-size: 0.8rem;
     }
-
-    #leaderboard-panel .text-3xl {
-        font-size: 1.75rem; /* Reduce title size */
+    #leaderboard-panel .text-3xl,
+    #stats-panel .text-3xl,
+    .content-panel .text-3xl {
+        font-size: 1.75rem;
     }
 }
+
 
 /* Hide Avatars specifically for Daphinix Chat panel */
 #daphinix-panel .message-avatar-placeholder {
@@ -1565,4 +1871,111 @@ select {
     text-overflow: ellipsis;
     white-space: nowrap;
     padding-right: 0.5rem;
+}
+
+/* Add any additional global utility classes or specific component styles below */
+
+.btn-glow-purple {
+    background-color: #6d28d9; /* A solid purple, e.g., Tailwind's violet-700 */
+    color: white;
+    padding: 0.65rem 1.3rem; /* Adjusted padding */
+    border-radius: 0.65rem; /* Adjusted for a sleeker look */
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #8b5cf6; /* Violet-500 for a subtle border */
+    box-shadow: 0 0 10px 0px rgba(139, 92, 246, 0.6), /* Outer glow violet-500 */
+                0 0 20px 0px rgba(167, 139, 250, 0.4), /* Wider, softer outer glow violet-400 */
+                inset 0 0 5px 0px rgba(196, 181, 253, 0.3); /* Inner subtle glow violet-300 */
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden; /* For potential pseudo-element effects */
+}
+
+.btn-glow-purple::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200%; /* Large enough to cover button */
+    height: 200%;
+    background: radial-gradient(circle, rgba(221, 214, 254, 0.2) 0%, rgba(167, 139, 250, 0) 60%); /* Subtle radial highlight */
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.4s ease-out;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.btn-glow-purple:hover::before,
+.btn-glow-purple:focus::before {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.btn-glow-purple > * { /* Ensure text/icons are above the pseudo-element */
+    position: relative;
+    z-index: 1;
+}
+
+.btn-glow-purple:hover,
+.btn-glow-purple:focus {
+    background-color: #5b21b6; /* Darker purple on hover - violet-800 */
+    border-color: #a78bfa; /* Brighter border on hover - violet-400 */
+    box-shadow: 0 0 15px 2px rgba(167, 139, 250, 0.8), /* Enhanced outer glow */
+                0 0 30px 2px rgba(196, 181, 253, 0.6), /* Wider, softer outer glow */
+                inset 0 0 8px 1px rgba(221, 214, 254, 0.4); /* Enhanced inner glow */
+    transform: translateY(-1px) scale(1.01); /* Subtle lift and scale */
+}
+
+.btn-glow-purple:active {
+    background-color: #4c1d95; /* Even darker on active - violet-900 */
+    transform: translateY(0px) scale(1);
+    box-shadow: 0 0 8px 0px rgba(139, 92, 246, 0.5),
+                inset 0 0 5px 0px rgba(196, 181, 253, 0.2);
+}
+
+@media (max-width: 640px) {
+    .stats-card {
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        padding: 1rem 0.5rem;
+    }
+    #badges-list {
+        flex-wrap: wrap;
+        gap: 0.5rem 0.5rem;
+        justify-content: flex-start;
+    }
+}
+.badge-item {
+    position: relative;
+}
+.badge-tooltip {
+    position: absolute;
+    z-index: 10;
+    top: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    visibility: hidden;
+    background: linear-gradient(135deg, #232946 80%, #3b3b4f 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px 22px 16px 22px;
+    min-width: 220px;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(44, 0, 80, 0.22), 0 2px 8px rgba(0,0,0,0.18);
+    font-size: 1rem;
+    font-weight: 400;
+    text-align: left;
+    pointer-events: none;
+    white-space: normal;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.badge-tooltip::after {
+    content: "";
+    position: absolute;
+    top: -12px;
+    left: 50%;
 }
