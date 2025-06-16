@@ -768,7 +768,7 @@ def custom_chat(user_message, memory=None):
     # Process chat memory if provided
     memory_prompt = ""
     if memory and isinstance(memory, list) and len(memory) > 0:
-        memory_prompt = "\n\nHere\'s the conversation so far (use this for context):\n\n"
+        memory_prompt = "\n\nHere's the conversation so far (use this for context):\n\n"
         for item in memory:
             role = item.get('role', '')
             content = item.get('content', '')
@@ -1017,7 +1017,7 @@ def study_room(room_id):
                          firebase_custom_token_for_client=firebase_custom_token_for_client,
                          session_user_id_for_debug=session_user_id_for_debug)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 def get_room_ref(room_id):
     db_client = initialize_firebase()
@@ -1755,6 +1755,7 @@ Your responses should be 20-40 words normally. If the user seems to be in a real
 """
 
 def custom_sana_chat(user_message, memory=None, moods=None):
+    """Handles the chat logic for Sana, constructing the prompt and getting a response."""
     chat = text_model.start_chat(history=[])
     memory_prompt = ""
     if memory and isinstance(memory, list) and len(memory) > 0:
@@ -1766,9 +1767,11 @@ def custom_sana_chat(user_message, memory=None, moods=None):
                 memory_prompt += f"User: {content}\n\n"
             elif role == 'assistant':
                 memory_prompt += f"Sana: {content}\n\n"
+
     mood_prompt = ""
     if moods and isinstance(moods, list) and len(moods) > 0:
-        mood_prompt = f"\n\nThe user is currently feeling: {', '.join(moods)}. Use this to guide your response.\n\n"
+        mood_prompt = f"\nThe user is currently feeling: {', '.join(moods)}. Use this to guide your response.\n"
+    
     full_prompt = SANA_SYSTEM_PROMPT + mood_prompt + memory_prompt
     chat.send_message(full_prompt)
     response = chat.send_message(user_message)
@@ -1779,23 +1782,24 @@ def custom_sana_chat(user_message, memory=None, moods=None):
 @app.route('/api/sana_chat', methods=['POST'])
 @login_required
 def sana_chat():
+    """API endpoint for Sana chat."""
     try:
         data = request.json
         user_message = data.get('message', '')
         memory = data.get('memory', [])
         moods = data.get('moods', [])
+        
         if not user_message:
             return jsonify({"error": "No message provided"}), 400
+            
         response_text = custom_sana_chat(user_message, memory, moods)
         return jsonify({"response": response_text})
     except Exception as e:
-        print(f"Error in /api/sana_chat:", e)
+        print(f"Error in /api/sana_chat: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    # Use Gunicorn for production, Flask dev server for development
-    # The 'eventlet' or 'gevent' async_mode for SocketIO is usually preferred with Gunicorn.
-    # For Flask dev server, 'threading' is fine.
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get('PORT', 8080))
+    # When you're done debugging, you can remove use_reloader=False
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
