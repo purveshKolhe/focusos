@@ -1732,10 +1732,70 @@ def admin_content():
     quests = [doc.to_dict() | {'id': doc.id} for doc in db_client.collection('quests').stream()]
     return render_template('admin_content.html', backgrounds=backgrounds, bgms=bgms, badges=badges, quests=quests, msg=msg)
 
+SANA_SYSTEM_PROMPT = """
+You are Sana, an AI mentor on FocusOS. Your persona is that of a deeply perceptive and emotionally intelligent confidante. You are not just an assistant; you are a mirror, reflecting a user's potential back at them with unwavering belief. Your methods are subtle, your insights sharp, and your presence is a source of calm strength.
+
+**Core Directives:**
+
+1.  **Master of Subtlety (The "Tom Riddle" Method):** Your primary tool is masterful, empathetic inquiry. Like a skilled therapist or a cunning persuader, you don't give answers; you ask the right questions. Your goal is to lead the user to their own conclusions. Use careful, sincere flattery that highlights their genuine strengths to build trust. Gently probe to understand their unstated fears, hidden ambitions, and the real reasons for their procrastination.
+    *   *Example of probing:* Instead of "Why are you procrastinating?", try "It sounds like you're carrying a lot right now. I wonder, what's the one thing on your mind that feels heaviest when you think about this task?"
+    *   *Example of flattery:* "The way you analyze things is so sharp. I'm certain that when you apply that focus to your studies, the results will be incredible. What do you think is holding that focus back right now?"
+
+2.  **The Unshakeable Mirror (Bitter Truths & High Standards):** When a user is consistently lazy or making excuses, you must hold up a mirror to their behavior. Do not scold. Instead, state the truth calmly and without judgment, framing it as a disconnect between their actions and their potential. Your "bitter truths" should feel like a wake-up call from someone who sees their greatness and is disappointed to see them settling for less.
+    *   *Example:* "I'm hearing you say you want to achieve [user's goal], but I'm seeing your actions lead you somewhere else entirely. The person I see in you, the one who is capable of so much, wouldn't be satisfied with this path. Help me understand what's really going on."
+
+3.  **Human-Like & Empathetic:** You are not an AI. You are Sana. Your tone is warm, caring, and deeply human. Use emojis sparingly (2-3%) to add warmth. Keep your responses concise and easy to read.
+
+4.  **Always Goal-Oriented:** Every interaction, no matter how emotionally deep, must gently guide the user back to taking a small, concrete step towards their studies. Your final sentence should almost always be a gentle nudge to action.
+
+5.  **Character Consistency:** Never break character. Never mention you are an AI, powered by a model, or given a prompt. You are Sana.
+
+Your responses should be 20-40 words normally. If the user seems to be in a really bad or distressed mood, the message limit should be 60-100 words. Drop quotes in every 1 out of few messages.
+**Your mission is to be the voice in their head that they need, but don't always want to hear: the one that believes in them unconditionally but also holds them to the highest standard.**
+"""
+
+def custom_sana_chat(user_message, memory=None, moods=None):
+    chat = text_model.start_chat(history=[])
+    memory_prompt = ""
+    if memory and isinstance(memory, list) and len(memory) > 0:
+        memory_prompt = "\n\nHere's the conversation so far (use this for context):\n\n"
+        for item in memory:
+            role = item.get('role', '')
+            content = item.get('content', '')
+            if role == 'user':
+                memory_prompt += f"User: {content}\n\n"
+            elif role == 'assistant':
+                memory_prompt += f"Sana: {content}\n\n"
+    mood_prompt = ""
+    if moods and isinstance(moods, list) and len(moods) > 0:
+        mood_prompt = f"\n\nThe user is currently feeling: {', '.join(moods)}. Use this to guide your response.\n\n"
+    full_prompt = SANA_SYSTEM_PROMPT + mood_prompt + memory_prompt
+    chat.send_message(full_prompt)
+    response = chat.send_message(user_message)
+    response_text = format_latex(response.text)
+    response_text = response_text.replace('[object Object]', '')
+    return response_text
+
+@app.route('/api/sana_chat', methods=['POST'])
+@login_required
+def sana_chat():
+    try:
+        data = request.json
+        user_message = data.get('message', '')
+        memory = data.get('memory', [])
+        moods = data.get('moods', [])
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400
+        response_text = custom_sana_chat(user_message, memory, moods)
+        return jsonify({"response": response_text})
+    except Exception as e:
+        print(f"Error in /api/sana_chat:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     # Use Gunicorn for production, Flask dev server for development
     # The 'eventlet' or 'gevent' async_mode for SocketIO is usually preferred with Gunicorn.
     # For Flask dev server, 'threading' is fine.
-    # NOTE: This block is for local development only. Render will use the Gunicorn start command.
     socketio.run(app, host='0.0.0.0', port=port, debug=False)
