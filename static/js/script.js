@@ -2077,6 +2077,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loadChatHistory();
             fetchAndRenderLeaderboard('xp', '#stats-panel'); // Initial load for Stats Panel
             fetchAndDisplayInspireContent(); // Initial load for Inspire Me tab
+            loadSanaMemory(); // Load Sana's chat history when the page loads
         });
 
         // Save user data periodically (for non-event syncs if needed)
@@ -2434,7 +2435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Event listener for when the Inspire tab itself is clicked (to load content if it's the first time)
-        // The main tab click handler already exists, we just need to ensure content is loaded if panel becomes active.
+        // The main tab click handler already exists, we just need to ensure content is loaded if it's the first time.
         // Consider adding a check within the main tab click handler if this specific panel is targeted,
         // or simply rely on the initial load and the refresh button.
         // For simplicity, the initial load is done in $(document).ready(), and refresh button handles subsequent ones.
@@ -2497,6 +2498,224 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // renderBgModalSubCategoryTabs(); // Only if you use subcategories
             // renderBgModalGrid(); // If you want to render the grid immediately
+        });
+
+        // Sana Tab Logic
+        $(document).on('click', '#sana-tab', function() {
+            $('#sana-mood-modal').removeClass('hidden');
+        });
+        $(document).on('click', '#sana-mood-next', function() {
+            const moods = [];
+            $('#sana-mood-form input[name="mood"]:checked').each(function() {
+                moods.push($(this).val());
+            });
+            $('#sana-mood-modal').addClass('hidden');
+            $('.content-panel').hide();
+            $('#sana-panel').show();
+            $('#sana-panel').data('moods', moods);
+            // Optionally, store moods for use in chat
+        });
+        // Sana Chat Logic
+        let sanaMemory = [];
+        let sanaInitialMoods = []; // Store moods temporarily
+
+        // Load memory from localStorage on startup
+        function loadSanaMemory() {
+            const storedMemory = localStorage.getItem('sanaChatHistory');
+            if (storedMemory) {
+                sanaMemory = JSON.parse(storedMemory);
+                // Render the loaded chat history
+                sanaMemory.forEach(msg => {
+                    addSanaMessageToUI(msg.role === 'user' ? 'You' : 'Sana', msg.content, msg.role === 'user');
+                });
+            }
+        }
+
+        // Get Sana's memory
+        function getSanaMemory() {
+            return sanaMemory;
+        }
+
+        // Add to Sana's memory and update localStorage
+        function addToSanaMemory(role, content) {
+            sanaMemory.push({ role, content });
+            localStorage.setItem('sanaChatHistory', JSON.stringify(sanaMemory));
+        }
+
+        // Clear Sana's memory and localStorage
+        function clearSanaMemory() {
+            sanaMemory = [];
+            localStorage.removeItem('sanaChatHistory');
+            $('#sana-responseArea').html(''); // Clear the UI
+        }
+
+        // Add click listener for the new clear button
+        $('#clear-sana-chat').on('click', function() {
+            if (confirm('Are you sure you want to clear your chat history with Sana? This cannot be undone.')) {
+                clearSanaMemory();
+                showUIMessage("Sana's Chat Cleared", "Your conversation history has been removed.", "info");
+            }
+        });
+
+        // Handle clicking the "Start Chatting" button in the mood modal
+        $('#start-sana-chat').on('click', function() {
+            sanaInitialMoods = [];
+            $('#sana-mood-selection input:checked').each(function() {
+                sanaInitialMoods.push($(this).val());
+            });
+            $('#sana-mood-modal').addClass('hidden');
+            $('.nav-tab[data-target="sana-panel"]').click();
+
+            if (sanaInitialMoods.length > 0) {
+                // Don't add a message to UI here, just send the first message to the backend
+                sendSanaMessage(true);
+            }
+        });
+
+        // Function to add a message to Sana's chat UI
+        function addSanaMessageToUI(sender, message, isUser) {
+            const responseArea = $('#sana-responseArea');
+            const userClass = isUser ? 'user-message' : 'bot-message';
+            
+            // Define avatar HTML. User has no avatar, Sana has a specific one.
+            const avatarImg = isUser 
+                ? '' 
+                : '<img src="/static/assets/logo/sana.png" alt="Sana" class="w-8 h-8 rounded-full">';
+
+            const senderName = isUser ? 'You' : 'Sana';
+
+            const messageElement = `
+                <div class="message ${userClass} animate-fade-in">
+                    <div class="message-avatar-placeholder">
+                        ${avatarImg}
+                    </div>
+                    <div class="message-bubble-wrapper">
+                        <div class="message-header">${senderName}</div>
+                        <div class="message-content">${message}</div>
+                    </div>
+                </div>`;
+            responseArea.append(messageElement);
+            responseArea.scrollTop(responseArea[0].scrollHeight);
+        }
+
+        // Function to send a message to Sana
+        async function sendSanaMessage(isInitialMessage = false) {
+            const input = $('#sanaInput');
+            const userMessage = input.val().trim();
+            let messageToSend = userMessage;
+
+            if (isInitialMessage) {
+                if (sanaInitialMoods.length > 0) {
+                    messageToSend = `I'm currently feeling: ${sanaInitialMoods.join(', ')}.`;
+                    // Add a system-like message to the UI for user context.
+                    addSanaMessageToUI('System', `You started the chat feeling: ${sanaInitialMoods.join(', ')}.`, true);
+                    // This system message will not be added to memory.
+                } else {
+                    return; // Don't start a conversation if no moods were selected and it's the initial call
+                }
+            } else {
+                if (!userMessage) return;
+                addSanaMessageToUI('You', userMessage, true);
+                addToSanaMemory('user', userMessage);
+            }
+
+            input.val('');
+            showTypingIndicator(true, 'sana');
+
+            try {
+                const payload = {
+                    message: messageToSend,
+                    memory: getSanaMemory(),
+                    moods: sanaInitialMoods
+                };
+
+                const response = await fetch('/api/sana_chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const data = await response.json();
+                const sanaResponse = data.response;
+                addToSanaMemory('assistant', sanaResponse);
+                addSanaMessageToUI('Sana', sanaResponse, false);
+                
+                // Clear moods after they have been sent once
+                if (sanaInitialMoods.length > 0) {
+                    sanaInitialMoods = [];
+                }
+
+            } catch (error) {
+                console.error('Error with Sana chat:', error);
+                addSanaMessageToUI('Sana', "I'm having a little trouble connecting right now. Please try again in a moment. 💕", false);
+            } finally {
+                showTypingIndicator(false, 'sana');
+            }
+        }
+
+        // Function to show/hide the typing indicator
+        function showTypingIndicator(show, agent) { // agent can be 'daphinix' or 'sana'
+            const daphinixIndicator = $('#daphinix-panel .typing-indicator');
+            const sanaIndicator = $('#sana-panel .typing-indicator');
+
+            let indicator;
+            if (agent === 'sana') {
+                indicator = sanaIndicator;
+            } else {
+                indicator = daphinixIndicator;
+            }
+
+            if (indicator.length) {
+                if (show) {
+                    indicator.css('display', 'flex');
+                } else {
+                    indicator.css('display', 'none');
+                }
+            }
+        }
+
+        // Handle tab switching
+        $('.nav-tab').on('click', function() {
+            const targetPanelId = $(this).data('target');
+            
+            // Theme application for Sana
+            if (targetPanelId === 'sana-panel') {
+                $('#sana-panel').addClass('sana-theme');
+            } else {
+                // No need for an else, the theme class is specific to sana-panel
+            }
+
+            // Standard tab switching logic
+            $('.nav-tab').removeClass('active');
+            $(this).addClass('active');
+            $('.content-panel').removeClass('active');
+            $('#' + targetPanelId).addClass('active');
+
+            // Special handling for timer panel
+            if (targetPanelId === 'timer-panel') {
+                $('#timer-panel').css('display', 'flex'); 
+            }
+        });
+
+        // Event listener for sending a message
+        $(document).on('click', '#sana-send-button', function() {
+            sendSanaMessage();
+            showTypingIndicator(true);
+        });
+
+        // Event listener for keydown
+        $(document).on('keydown', '#sanaInput', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendSanaMessage();
+                showTypingIndicator(true);
+            }
+        });
+
+        // Event listener for keyup
+        $(document).on('keyup', '#sanaInput', function() {
+            showTypingIndicator(false);
         });
     }
 });
