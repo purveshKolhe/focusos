@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FocusOS{% endblock %}</title>
+    <link rel="shortcut icon" href="static\assets\logo\fav.png" type="image/x-icon">
     <link href="/static/lib/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -12,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    {# <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"> <!-- Removed Inter font --> #}
     {% block extra_css %}{% endblock %}
 
     <script src="/static/lib/jquery-3.6.0.min.js"></script>
@@ -75,6 +77,14 @@
             console.log(`[Base.html:Head] IMMEDIATELY AFTER DEFINITION - firebaseCustomToken: '${firebaseCustomToken}' (length: ${firebaseCustomToken.length})`);
             console.log(`[Base.html:Head] IMMEDIATELY AFTER DEFINITION - expectedUidOnSignIn: '${expectedUidOnSignIn}'`);
 
+            function forceLogoutAndReload() {
+                // Sign out from Firebase and reload the page to force re-auth
+                firebase.auth().signOut().then(() => {
+                    console.warn('[Base.html:Head] Forcing logout and reload due to auth error/null user.');
+                    window.location.reload();
+                });
+            }
+
             if (firebaseCustomToken && firebaseCustomToken !== "None" && firebaseCustomToken !== "null" && firebaseCustomToken.trim() !== "") {
                 console.log(`[Base.html:Head] Attempting signInWithCustomToken with token (first 30 chars): ${firebaseCustomToken.substring(0,30)}...`);
                 firebase.auth().signInWithCustomToken(firebaseCustomToken)
@@ -88,8 +98,10 @@
                     })
                     .catch((error) => {
                         console.error(`[Base.html:Head] Custom token sign-in FAILED:`, error);
-                        console.error(`[Base.html:Head] Token used for failed sign-in attempt: "${firebaseCustomToken}"`);
-                        console.log("[Base.html:Head] Resolving firebaseAuthReady with NULL due to sign-in error.");
+                        console.error(`[Base.html:Head] Token used for failed sign-in attempt: \"${firebaseCustomToken}\"`);
+                        // Force logout and reload on token error
+                        forceLogoutAndReload();
+                        // Also resolve with null in case any code awaits
                         resolve(null); 
                     });
             } else {
@@ -97,6 +109,10 @@
                 const unsubscribe = firebase.auth().onAuthStateChanged(user => {
                     unsubscribe(); 
                     console.log(`[Base.html:Head] Initial onAuthStateChanged. Firebase User:`, user ? user.uid : "null");
+                    if (!user) {
+                        // Force logout and reload if user is null
+                        forceLogoutAndReload();
+                    }
                     console.log("[Base.html:Head] Resolving firebaseAuthReady from onAuthStateChanged with user:", user);
                     resolve(user);
                 });
@@ -145,4 +161,4 @@
 
     {% block extra_js %}{% endblock %}
 </body>
-</html> 
+</html>
