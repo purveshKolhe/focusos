@@ -68,53 +68,32 @@
 
         // Promise for Firebase Auth readiness
         window.firebaseAuthReady = new Promise((resolve) => {
-            // Ensure the token is treated as a string literal in JS.
-            // If firebase_custom_token_for_client is None/null from Flask, it becomes an empty string here,
-            // which is fine as the if (firebaseCustomToken) check will handle it.
             const firebaseCustomToken = "{{ firebase_custom_token_for_client or '' }}";
             const expectedUidOnSignIn = "{{ session_user_id_for_debug or 'NOT_SET' }}";
             
-            console.log(`[Base.html:Head] IMMEDIATELY AFTER DEFINITION - firebaseCustomToken: '${firebaseCustomToken}' (length: ${firebaseCustomToken.length})`);
-            console.log(`[Base.html:Head] IMMEDIATELY AFTER DEFINITION - expectedUidOnSignIn: '${expectedUidOnSignIn}'`);
-
-            function forceLogoutAndReload() {
-                // Sign out from Firebase and reload the page to force re-auth
-                firebase.auth().signOut().then(() => {
-                    console.warn('[Base.html:Head] Forcing logout and reload due to auth error/null user.');
-                    window.location.reload();
-                });
-            }
+            console.log(`[Base.html:Head] Custom Token: '${firebaseCustomToken ? firebaseCustomToken.substring(0,15) : 'None' }...'`);
+            console.log(`[Base.html:Head] Expected UID: '${expectedUidOnSignIn}'`);
 
             if (firebaseCustomToken && firebaseCustomToken !== "None" && firebaseCustomToken !== "null" && firebaseCustomToken.trim() !== "") {
-                console.log(`[Base.html:Head] Attempting signInWithCustomToken with token (first 30 chars): ${firebaseCustomToken.substring(0,30)}...`);
                 firebase.auth().signInWithCustomToken(firebaseCustomToken)
                     .then((userCredential) => {
                         console.log(`[Base.html:Head] Custom token sign-in SUCCESS. Firebase User UID: ${userCredential.user.uid}`);
                         if (expectedUidOnSignIn && expectedUidOnSignIn !== 'NOT_SET' && userCredential.user.uid !== expectedUidOnSignIn) {
-                            console.warn(`[Base.html:Head] UID MISMATCH after custom token sign-in! Expected ${expectedUidOnSignIn}, got ${userCredential.user.uid}.`);
+                            console.warn(`[Base.html:Head] UID MISMATCH! Expected ${expectedUidOnSignIn}, got ${userCredential.user.uid}.`);
                         }
-                        console.log("[Base.html:Head] Resolving firebaseAuthReady with user:", userCredential.user);
                         resolve(userCredential.user);
                     })
                     .catch((error) => {
                         console.error(`[Base.html:Head] Custom token sign-in FAILED:`, error);
-                        console.error(`[Base.html:Head] Token used for failed sign-in attempt: \"${firebaseCustomToken}\"`);
-                        // Force logout and reload on token error
-                        forceLogoutAndReload();
-                        // Also resolve with null in case any code awaits
+                        console.error(`[Base.html:Head] Token used: \"${firebaseCustomToken}\"`);
+                        // Don't force reload, just resolve as null. The app should handle the null user state.
                         resolve(null); 
                     });
             } else {
-                console.log("[Base.html:Head] No valid custom token found. Setting up onAuthStateChanged for initial state.");
+                console.log("[Base.html:Head] No custom token. Using onAuthStateChanged.");
                 const unsubscribe = firebase.auth().onAuthStateChanged(user => {
                     unsubscribe(); 
-                    console.log(`[Base.html:Head] Initial onAuthStateChanged. Firebase User:`, user ? user.uid : "null");
-                    // DO NOT force a reload on the login or register pages.
-                    // This was the cause of the infinite reload loop.
-                    if (!user && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-                        forceLogoutAndReload();
-                    }
-                    console.log("[Base.html:Head] Resolving firebaseAuthReady from onAuthStateChanged with user:", user);
+                    console.log(`[Base.html:Head] onAuthStateChanged user:`, user ? user.uid : null);
                     resolve(user);
                 });
             }
