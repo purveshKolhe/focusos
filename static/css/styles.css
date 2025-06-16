@@ -1353,19 +1353,64 @@ select {
     }
 
     #daphinix-panel .daphinix-input-container #upload-image-btn {
-        margin-bottom: 0.5rem; /* Space below upload button if it's also stacked */
-        align-self: flex-start; /* Align to left if container is stretched */
+        padding: 0.5rem;
+        border-radius: 9999px; /* Fully rounded */
+        background: transparent;
+        border: 1px solid #4a5568; /* md:gray-700 */
+        color: #a0aec0; /* md:gray-400 */
     }
 
-    /* Adjust the container for the input and buttons if necessary */
     #daphinix-panel .daphinix-input-container {
-        /* padding-bottom: 0.5rem; /* Add some padding if button is close to bottom edge */
+        padding: 0.5rem;
+        border-top: 1px solid #4a5568; /* md:gray-700 */
+    }
+
+    #daphinix-panel .daphinix-input {
+        background-color: #3e2a3b;
+        color: #f0d9f5;
+        border-color: #6d28d9;
+    }
+
+    #daphinix-panel .daphinix-input:focus {
+        border-color: #a855f7; /* Lighter pink on focus */
+        box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.5);
+    }
+
+    #daphinix-panel .daphinix-input-container #send-button {
+        background-color: #9333ea; /* Pink send button */
+    }
+
+    #daphinix-panel .daphinix-input-container #send-button:hover {
+        background-color: #a855f7;
+    }
+
+    #daphinix-panel .bot-message .message-content {
+        background-color: #5b21b6; /* Deep purple for Sana's messages */
+        color: #f5d0fe;
+    }
+
+    #daphinix-panel .bot-message .message-header {
+        color: #e9d5ff;
+    }
+
+    #daphinix-panel .typing-indicator span {
+        background-color: #d8b4fe; /* Pink typing dots */
+        animation-name: sana-typing;
+    }
+
+    @keyframes sana-typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+        }
+        30% {
+            transform: translateY(-8px);
+        }
     }
 }
 
 /* Styles for Badges in the Gamification Guide */
 .guide-badge-card {
-    background-color: rgba(255, 255, 255, 0.05); /* Slightly transparent card */
+    background-color: rgba(41, 41, 45, 0.8); /* Slightly more opaque */
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0.5rem;
     padding: 0.75rem;
@@ -1979,3 +2024,1046 @@ select {
     top: -12px;
     left: 50%;
 }
+
+/* Clear Sana Chat Button */
+#clear-sana-chat {
+    background: transparent;
+    border: 1px solid var(--sana-primary);
+    color: var(--sana-accent);
+    padding: 0.5rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 0.5rem;
+}
+
+#clear-sana-chat:hover {
+    background-color: var(--sana-primary);
+    color: white;
+}
+
+/* ... existing code ... */
+    @keyframes sana-typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+        }
+        30% {
+            transform: translateY(-8px);
+        }
+    }
+
+    /* Mobile specific adjustments for Sana panel */
+    #sana-panel .bg-black {
+        padding: 1rem;
+        height: 70vh;
+        max-height: calc(100vh - 100px);
+    }
+
+    #sana-panel .daphinix-response-area {
+        min-height: 200px;
+        max-height: none;
+    }
+
+    #sana-panel .daphinix-input-container textarea {
+        font-size: 0.9rem;
+    }
+
+    #sana-panel .daphinix-input-container #sana-send-button {
+        padding: 0.75rem;
+    }
+
+
+/* Styles for Badges in the Gamification Guide */
+.guide-badge-card {
+    background-color: rgba(41, 41, 45, 0.8); /* Slightly more opaque */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%; /* Ensure cards in a row have same height */
+}
+
+.guide-badge-card .badge-icon-container {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    font-size: 1.75rem; /* Larger icon */
+    position: relative; /* For earned overlay */
+}
+
+.guide-badge-card .badge-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #e5e7eb; /* Light gray for name */
+    margin-bottom: 0.25rem;
+}
+
+.guide-badge-card .badge-description {
+    font-size: 0.75rem;
+    color: #d1d5db; /* Medium gray for description */
+    margin-bottom: 0.5rem;
+    flex-grow: 1; /* Allow description to take space */
+}
+
+.guide-badge-card .badge-criteria {
+    font-size: 0.7rem;
+    color: #9ca3af; /* Darker gray for criteria */
+    font-style: italic;
+}
+
+/* Unearned Badge Styling */
+.guide-badge-card.unearned .badge-icon-container {
+    filter: grayscale(100%);
+    opacity: 0.6;
+}
+.guide-badge-card.unearned .badge-icon-container i {
+    color: #9ca3af !important; /* Override specific badge colors for unearned */
+}
+
+.guide-badge-card.unearned .badge-name,
+.guide-badge-card.unearned .badge-description,
+.guide-badge-card.unearned .badge-criteria {
+    color: #6b7280; /* Darker, muted text for unearned */
+}
+
+/* Overlay for Earned Badges */
+.guide-badge-card.earned .badge-icon-container::after {
+    content: "\f058"; /* Font Awesome check-circle solid */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    font-size: 1rem;
+    color: #10B981; /* Green check */
+    background-color: #1f2937; /* Match card background to make circle effect */
+    border-radius: 50%;
+    padding: 2px;
+    line-height: 1;
+}
+
+/* Styles for Quest Types in the Gamification Guide */
+.guide-quest-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.guide-quest-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.guide-quest-card .quest-title {
+    font-weight: 600;
+    color: #c4b5fd; /* Light purple */
+    margin-bottom: 0.25rem;
+}
+
+.guide-quest-card .quest-description-template {
+    font-size: 0.85rem;
+    color: #d1d5db;
+    margin-bottom: 0.5rem;
+}
+
+.guide-quest-card .quest-details {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* Vertical Navigation Bar Styling for Scrollability */
+.vertical-nav {
+    overflow: hidden;
+}
+
+.nav-tabs-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* Inner container for tabs, ensure it can grow */
+.nav-tabs-wrapper > .flex.flex-col {
+    min-height: min-content;
+}
+
+/* Webkit Scrollbar Styling for nav-tabs-wrapper */
+.nav-tabs-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox Scrollbar Styling (less direct control, but can set color and width) */
+.nav-tabs-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Enhanced To-Do List Styles */
+
+/* To-Do Panel Container */
+#todo-panel .bg-black {
+    /* max-w-5xl is good, padding can be adjusted if needed */
+}
+
+#todo-panel h2 {
+    /* Existing styles are likely fine, text-purple-300 is good */
+}
+
+/* Add Task Button */
+#open-todo-modal {
+    /* bg-purple-600 hover:bg-purple-700 is good, ensure consistency */
+    padding: 0.6rem 1.2rem; /* Slightly more padding */
+    font-weight: 500;
+}
+
+/* To-Do Table Styling */
+#todo-panel table {
+    border-collapse: separate; /* Allows for border-radius on cells if needed, and spacing */
+    border-spacing: 0; /* Reset default spacing if using separate */
+    width: 100%;
+    border-radius: 0.75rem; /* Rounded corners for the table itself */
+    overflow: hidden; /* Important for border-radius to take effect on child elements */
+}
+
+#todo-panel th,
+#todo-panel td {
+    padding: 0.85rem 1.1rem; /* Increased padding for better spacing */
+    text-align: left;
+    border-bottom: 1px solid rgba(147, 51, 234, 0.2); /* Subtle purple border */
+    font-size: 0.875rem; /* Slightly smaller font for table data */
+}
+
+#todo-panel th {
+    background-color: rgba(147, 51, 234, 0.15); /* Light purple header */
+    color: #e5e7eb; /* Light gray text for headers */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+#todo-panel tr:last-child td {
+    border-bottom: none; /* Remove border from last row */
+}
+
+#todo-panel tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03); /* Very subtle hover */
+}
+
+#todo-panel .todo-status {
+    /* background-color: #1f2937; /* Darker background for select */
+    /* border: 1px solid #4b5563; /* Darker border */
+    /* color: white; */
+    /* padding: 0.3rem 0.6rem; */
+    /* border-radius: 0.375rem; */
+    font-size: 0.8rem;
+    min-width: 120px; /* Give status dropdown some width */
+}
+
+#todo-panel .delete-todo i {
+    transition: color 0.2s ease-in-out;
+}
+#todo-panel .delete-todo:hover i {
+    color: #ef4444; /* Brighter red on hover for the icon itself */
+}
+
+/* "No tasks found" message */
+#todo-table-body tr td[colspan="8"] {
+    color: #9ca3af; /* Muted color */
+    padding: 2rem;
+}
+
+/* Add/Edit Task Modal Styling */
+#todo-modal .bg-gray-900 {
+    border-width: 1px;
+    border-color: rgba(147, 51, 234, 0.5); /* Purple border consistent with other modals */
+    box-shadow: 0 0 30px rgba(147, 51, 234, 0.2); /* Glow effect */
+}
+
+#todo-modal h3 {
+    font-size: 1.35rem; /* Slightly larger modal title */
+}
+
+#todo-modal label {
+    font-size: 0.8rem;
+    color: #d1d5db; /* Lighter label text */
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+#todo-modal input[type="text"],
+#todo-modal input[type="datetime-local"],
+#todo-modal select,
+#todo-modal textarea {
+    background-color: rgba(0,0,0,0.3);
+    border: 1px solid rgba(147, 51, 234, 0.4);
+    color: white;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#todo-modal input[type="text"]:focus,
+#todo-modal input[type="datetime-local"]:focus,
+#todo-modal select:focus,
+#todo-modal textarea:focus {
+    outline: none;
+    border-color: rgba(147, 51, 234, 0.7);
+    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+#todo-modal textarea {
+    min-height: 60px;
+}
+
+#todo-modal .flex.justify-end button {
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+}
+
+/* Ensure select dropdown arrows are visible on dark backgrounds if needed */
+#todo-modal select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.5rem; /* Make space for the arrow */
+}
+
+/* Responsive Leaderboard Table */
+@media (max-width: 640px) {
+    /* Responsive fixes for all leaderboard and stats panels */
+    #leaderboard-panel .overflow-hidden.shadow-lg,
+    #stats-panel .overflow-hidden.shadow-lg,
+    .content-panel .overflow-hidden.shadow-lg {
+        overflow-x: auto;
+    }
+    #leaderboard-panel table,
+    #stats-panel table,
+    .content-panel table {
+        min-width: 600px;
+    }
+    #leaderboard-panel th,
+    #leaderboard-panel td,
+    #stats-panel th,
+    #stats-panel td,
+    .content-panel th,
+    .content-panel td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    #leaderboard-panel .leaderboard-filter-btn,
+    #stats-panel .leaderboard-filter-btn,
+    .content-panel .leaderboard-filter-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    #leaderboard-panel .text-3xl,
+    #stats-panel .text-3xl,
+    .content-panel .text-3xl {
+        font-size: 1.75rem;
+    }
+}
+
+
+/* Hide Avatars specifically for Daphinix Chat panel */
+#daphinix-panel .message-avatar-placeholder {
+    display: none;
+}
+
+#daphinix-panel .message-bubble-wrapper {
+    max-width: 100%; /* Allow bubble to take full width since avatar is hidden */
+}
+
+/* Background Grid Styles */
+#background-grid-container {
+    /* Styles for the grid container are mostly handled by Tailwind classes in HTML */
+    /* max-h-96 overflow-y-auto p-2 bg-gray-800 bg-opacity-50 rounded-lg are set in HTML */
+}
+
+.background-item-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem; /* 8px */
+    padding: 0.5rem; /* 8px */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    aspect-ratio: 1 / 1; /* Maintain a square aspect ratio, or adjust as needed */
+    overflow: hidden;
+}
+
+.background-item-card:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #D946EF; /* Purple-pink accent */
+}
+
+.background-item-card.selected {
+    border-color: #D946EF; /* Purple-pink accent */
+    box-shadow: 0 0 15px rgba(217, 70, 239, 0.5);
+    background-color: rgba(217, 70, 239, 0.15);
+}
+
+.background-item-preview {
+    width: 100%;
+    height: 70%; /* Adjust based on desired preview size */
+    object-fit: cover;
+    border-radius: 0.375rem; /* 6px, slightly smaller than card */
+    margin-bottom: 0.5rem; /* Space between preview and name */
+}
+
+.background-item-name {
+    font-size: 0.75rem; /* 12px */
+    color: #f0f0f0;
+    margin-top: auto; /* Pushes name to bottom if preview is smaller */
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* New Background Selection Modal Styles */
+#background-selection-modal {
+    /* Tailwind handles initial hidden, fixed, inset-0, flex, items-center, justify-center, z-50, p-4 */
+}
+
+#background-selection-modal .modal-content {
+    /* Tailwind handles bg, padding, rounded, shadow, max-w, w-full, text-white, border, flex, flex-col, max-h */
+    /* Ensuring backdrop-blur works if it wasn't already */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+#background-selection-modal .bg-modal-main-tab {
+    /* Tailwind handles flex-1, py, px, text-sm, font-medium, text-center, text-gray-400, hover, border, focus */
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+#background-selection-modal .bg-modal-main-tab.active {
+    color: #D946EF; /* Active tab text color */
+    border-bottom-color: #D946EF; /* Active tab border color */
+}
+
+#bg-modal-subcategory-tabs {
+    /* Tailwind handles mb, flex, space-x, justify-center, p, bg, rounded, overflow-x */
+    /* Add scrollbar styling for consistency if needed, or use browser default */
+}
+
+.bg-modal-subcategory-tab {
+    /* Tailwind can handle p, rounded, text, hover:text, hover:bg */
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    position: relative; /* For tooltip positioning if using custom CSS tooltips */
+}
+
+.bg-modal-subcategory-tab.active {
+    background-color: rgba(217, 70, 239, 0.2); /* Light purple active state */
+    color: #D946EF;
+    border-color: #D946EF;
+}
+
+/* Tooltip for subcategory icons (can be simple title attribute or custom CSS) */
+.bg-modal-subcategory-tab[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-5px);
+    background-color: #111827; /* dark gray */
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+#bg-modal-grid-container {}
+    /* Tailwind handles flex-grow, overflow-y, grid, gap, p */
+    /* Custom scrollbar (styled-scrollbar class needs to be defined or use default) */
+
+/* ... existing code ... */
+@keyframes sana-typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-8px);
+    }
+}
+/* New Sana Theme - Cute, Adorable, and Neat */
+#sana-panel {
+    --sana-bg: #FFF0F5; /* Lavender Blush */
+    --sana-text: #5c3c4c; /* Deep Taupe */
+    --sana-primary: #FFB6C1; /* Light Pink */
+    --sana-secondary: #FFC0CB; /* Pink */
+    --sana-accent: #FF69B4; /* Hot Pink */
+    --sana-user-bubble: #FFFFFF;
+    --sana-bot-bubble: #ffe4e1; /* Misty Rose */
+}
+
+#sana-panel.sana-theme {
+    /* This rule should be mostly empty or gone, the background is handled by the inner container */
+    background-color: transparent !important;
+}
+
+#sana-panel.sana-theme > .bg-black {
+    background-color: rgba(0, 0, 0, 0.6) !important; /* Keep the panel's dark frame */
+}
+
+
+#sana-panel.sana-theme .daphinix-response-area {
+    background-color: var(--sana-bg);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFC0CB' fill-opacity='0.1'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10-10-4.477-10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10-10-4.477-10-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+#sana-panel.sana-theme .daphinix-input-container {
+    margin-top: 1rem; /* Added margin */
+    border-top: none;
+    background-color: transparent;
+}
+
+#sana-panel.sana-theme .daphinix-input {
+    background-color: #ffffff;
+    color: var(--sana-text);
+    border-color: var(--sana-secondary);
+    border-radius: 20px;
+}
+
+#sana-panel.sana-theme .daphinix-input:focus {
+    border-color: var(--sana-accent);
+    box-shadow: 0 0 0 2px rgba(255, 105, 180, 0.4);
+}
+
+#sana-panel.sana-theme #sana-send-button {
+    background-color: var(--sana-accent);
+    color: white;
+}
+
+#sana-panel.sana-theme #sana-send-button:hover {
+    background-color: #ff85c1;
+}
+
+#sana-panel.sana-theme .user-message .message-content {
+    background-color: var(--sana-user-bubble);
+    color: var(--sana-text);
+    border: 1px solid #f0f0f0;
+}
+
+#sana-panel.sana-theme .bot-message .message-content {
+    background-color: var(--sana-bot-bubble);
+    color: var(--sana-text);
+}
+
+#sana-panel.sana-theme .message-header {
+    color: #a08090;
+}
+
+#sana-panel.sana-theme .typing-indicator span {
+    background-color: var(--sana-accent);
+    animation-name: sana-typing-animation;
+    animation-duration: 1s;
+    animation-iteration-count: infinite;
+}
+
+@keyframes sana-typing-animation {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+    30% {
+        transform: translateY(-8px);
+        opacity: 1;
+    }
+}
+/* Styles for Badges in the Gamification Guide */
+.guide-badge-card {
+    background-color: rgba(41, 41, 45, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%; /* Ensure cards in a row have same height */
+}
+
+.guide-badge-card .badge-icon-container {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    font-size: 1.75rem; /* Larger icon */
+    position: relative; /* For earned overlay */
+}
+
+.guide-badge-card .badge-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #e5e7eb; /* Light gray for name */
+    margin-bottom: 0.25rem;
+}
+
+.guide-badge-card .badge-description {
+    font-size: 0.75rem;
+    color: #d1d5db; /* Medium gray for description */
+    margin-bottom: 0.5rem;
+    flex-grow: 1; /* Allow description to take space */
+}
+
+.guide-badge-card .badge-criteria {
+    font-size: 0.7rem;
+    color: #9ca3af; /* Darker gray for criteria */
+    font-style: italic;
+}
+
+/* Unearned Badge Styling */
+.guide-badge-card.unearned .badge-icon-container {
+    filter: grayscale(100%);
+    opacity: 0.6;
+}
+.guide-badge-card.unearned .badge-icon-container i {
+    color: #9ca3af !important; /* Override specific badge colors for unearned */
+}
+
+.guide-badge-card.unearned .badge-name,
+.guide-badge-card.unearned .badge-description,
+.guide-badge-card.unearned .badge-criteria {
+    color: #6b7280; /* Darker, muted text for unearned */
+}
+
+/* Overlay for Earned Badges */
+.guide-badge-card.earned .badge-icon-container::after {
+    content: "\f058"; /* Font Awesome check-circle solid */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    font-size: 1rem;
+    color: #10B981; /* Green check */
+    background-color: #1f2937; /* Match card background to make circle effect */
+    border-radius: 50%;
+    padding: 2px;
+    line-height: 1;
+}
+
+/* Styles for Quest Types in the Gamification Guide */
+.guide-quest-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.guide-quest-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.guide-quest-card .quest-title {
+    font-weight: 600;
+    color: #c4b5fd; /* Light purple */
+    margin-bottom: 0.25rem;
+}
+
+.guide-quest-card .quest-description-template {
+    font-size: 0.85rem;
+    color: #d1d5db;
+    margin-bottom: 0.5rem;
+}
+
+.guide-quest-card .quest-details {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* Vertical Navigation Bar Styling for Scrollability */
+.vertical-nav {
+    overflow: hidden;
+}
+
+.nav-tabs-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* Inner container for tabs, ensure it can grow */
+.nav-tabs-wrapper > .flex.flex-col {
+    min-height: min-content;
+}
+
+/* Webkit Scrollbar Styling for nav-tabs-wrapper */
+.nav-tabs-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.nav-tabs-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox Scrollbar Styling (less direct control, but can set color and width) */
+.nav-tabs-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Enhanced To-Do List Styles */
+
+/* To-Do Panel Container */
+#todo-panel .bg-black {
+    /* max-w-5xl is good, padding can be adjusted if needed */
+}
+
+#todo-panel h2 {
+    /* Existing styles are likely fine, text-purple-300 is good */
+}
+
+/* Add Task Button */
+#open-todo-modal {
+    /* bg-purple-600 hover:bg-purple-700 is good, ensure consistency */
+    padding: 0.6rem 1.2rem; /* Slightly more padding */
+    font-weight: 500;
+}
+
+/* To-Do Table Styling */
+#todo-panel table {
+    border-collapse: separate; /* Allows for border-radius on cells if needed, and spacing */
+    border-spacing: 0; /* Reset default spacing if using separate */
+    width: 100%;
+    border-radius: 0.75rem; /* Rounded corners for the table itself */
+    overflow: hidden; /* Important for border-radius to take effect on child elements */
+}
+
+#todo-panel th,
+#todo-panel td {
+    padding: 0.85rem 1.1rem; /* Increased padding for better spacing */
+    text-align: left;
+    border-bottom: 1px solid rgba(147, 51, 234, 0.2); /* Subtle purple border */
+    font-size: 0.875rem; /* Slightly smaller font for table data */
+}
+
+#todo-panel th {
+    background-color: rgba(147, 51, 234, 0.15); /* Light purple header */
+    color: #e5e7eb; /* Light gray text for headers */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+#todo-panel tr:last-child td {
+    border-bottom: none; /* Remove border from last row */
+}
+
+#todo-panel tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03); /* Very subtle hover */
+}
+
+#todo-panel .todo-status {
+    /* background-color: #1f2937; /* Darker background for select */
+    /* border: 1px solid #4b5563; /* Darker border */
+    /* color: white; */
+    /* padding: 0.3rem 0.6rem; */
+    /* border-radius: 0.375rem; */
+    font-size: 0.8rem;
+    min-width: 120px; /* Give status dropdown some width */
+}
+
+#todo-panel .delete-todo i {
+    transition: color 0.2s ease-in-out;
+}
+#todo-panel .delete-todo:hover i {
+    color: #ef4444; /* Brighter red on hover for the icon itself */
+}
+
+/* "No tasks found" message */
+#todo-table-body tr td[colspan="8"] {
+    color: #9ca3af; /* Muted color */
+    padding: 2rem;
+}
+
+/* Add/Edit Task Modal Styling */
+#todo-modal .bg-gray-900 {
+    border-width: 1px;
+    border-color: rgba(147, 51, 234, 0.5); /* Purple border consistent with other modals */
+    box-shadow: 0 0 30px rgba(147, 51, 234, 0.2); /* Glow effect */
+}
+
+#todo-modal h3 {
+    font-size: 1.35rem; /* Slightly larger modal title */
+}
+
+#todo-modal label {
+    font-size: 0.8rem;
+    color: #d1d5db; /* Lighter label text */
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+#todo-modal input[type="text"],
+#todo-modal input[type="datetime-local"],
+#todo-modal select,
+#todo-modal textarea {
+    background-color: rgba(0,0,0,0.3);
+    border: 1px solid rgba(147, 51, 234, 0.4);
+    color: white;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#todo-modal input[type="text"]:focus,
+#todo-modal input[type="datetime-local"]:focus,
+#todo-modal select:focus,
+#todo-modal textarea:focus {
+    outline: none;
+    border-color: rgba(147, 51, 234, 0.7);
+    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+#todo-modal textarea {
+    min-height: 60px;
+}
+
+#todo-modal .flex.justify-end button {
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+}
+
+/* Ensure select dropdown arrows are visible on dark backgrounds if needed */
+#todo-modal select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.5rem; /* Make space for the arrow */
+}
+
+/* Responsive Leaderboard Table */
+@media (max-width: 640px) {
+    /* Responsive fixes for all leaderboard and stats panels */
+    #leaderboard-panel .overflow-hidden.shadow-lg,
+    #stats-panel .overflow-hidden.shadow-lg,
+    .content-panel .overflow-hidden.shadow-lg {
+        overflow-x: auto;
+    }
+    #leaderboard-panel table,
+    #stats-panel table,
+    .content-panel table {
+        min-width: 600px;
+    }
+    #leaderboard-panel th,
+    #leaderboard-panel td,
+    #stats-panel th,
+    #stats-panel td,
+    .content-panel th,
+    .content-panel td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    #leaderboard-panel .leaderboard-filter-btn,
+    #stats-panel .leaderboard-filter-btn,
+    .content-panel .leaderboard-filter-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    #leaderboard-panel .text-3xl,
+    #stats-panel .text-3xl,
+    .content-panel .text-3xl {
+        font-size: 1.75rem;
+    }
+}
+
+
+/* Hide Avatars specifically for Daphinix Chat panel */
+#daphinix-panel .message-avatar-placeholder {
+    display: none;
+}
+
+#daphinix-panel .message-bubble-wrapper {
+    max-width: 100%; /* Allow bubble to take full width since avatar is hidden */
+}
+
+/* Background Grid Styles */
+#background-grid-container {
+    /* Styles for the grid container are mostly handled by Tailwind classes in HTML */
+    /* max-h-96 overflow-y-auto p-2 bg-gray-800 bg-opacity-50 rounded-lg are set in HTML */
+}
+
+.background-item-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem; /* 8px */
+    padding: 0.5rem; /* 8px */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    aspect-ratio: 1 / 1; /* Maintain a square aspect ratio, or adjust as needed */
+    overflow: hidden;
+}
+
+.background-item-card:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #D946EF; /* Purple-pink accent */
+}
+
+.background-item-card.selected {
+    border-color: #D946EF; /* Purple-pink accent */
+    box-shadow: 0 0 15px rgba(217, 70, 239, 0.5);
+    background-color: rgba(217, 70, 239, 0.15);
+}
+
+.background-item-preview {
+    width: 100%;
+    height: 70%; /* Adjust based on desired preview size */
+    object-fit: cover;
+    border-radius: 0.375rem; /* 6px, slightly smaller than card */
+    margin-bottom: 0.5rem; /* Space between preview and name */
+}
+
+.background-item-name {
+    font-size: 0.75rem; /* 12px */
+    color: #f0f0f0;
+    margin-top: auto; /* Pushes name to bottom if preview is smaller */
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* New Background Selection Modal Styles */
+#background-selection-modal {
+    /* Tailwind handles initial hidden, fixed, inset-0, flex, items-center, justify-center, z-50, p-4 */
+}
+
+#background-selection-modal .modal-content {
+    /* Tailwind handles bg, padding, rounded, shadow, max-w, w-full, text-white, border, flex, flex-col, max-h */
+    /* Ensuring backdrop-blur works if it wasn't already */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+#background-selection-modal .bg-modal-main-tab {
+    /* Tailwind handles flex-1, py, px, text-sm, font-medium, text-center, text-gray-400, hover, border, focus */
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+#background-selection-modal .bg-modal-main-tab.active {
+    color: #D946EF; /* Active tab text color */
+    border-bottom-color: #D946EF; /* Active tab border color */
+}
+
+#bg-modal-subcategory-tabs {
+    /* Tailwind handles mb, flex, space-x, justify-center, p, bg, rounded, overflow-x */
+    /* Add scrollbar styling for consistency if needed, or use browser default */
+}
+
+.bg-modal-subcategory-tab {
+    /* Tailwind can handle p, rounded, text, hover:text, hover:bg */
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    position: relative; /* For tooltip positioning if using custom CSS tooltips */
+}
+
+.bg-modal-subcategory-tab.active {
+    background-color: rgba(217, 70, 239, 0.2); /* Light purple active state */
+    color: #D946EF;
+    border-color: #D946EF;
+}
+
+/* Tooltip for subcategory icons (can be simple title attribute or custom CSS) */
+.bg-modal-subcategory-tab[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-5px);
+    background-color: #111827; /* dark gray */
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+#bg-modal-grid-container {}
+    /* Tailwind handles flex-grow, overflow-y, grid, gap, p */
+    /* Custom scrollbar (styled-scrollbar class needs to be defined or use default) */
