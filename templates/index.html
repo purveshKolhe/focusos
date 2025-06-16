@@ -29,15 +29,15 @@
             <div id="checklist-step-1" class="space-y-4">
                 <p class="text-lg">Have you turned off all social media notifications?</p>
                 <div class="flex justify-center space-x-4">
-                    <button id="social-yes" class="btn-primary"><i class="fas fa-check mr-2"></i>Yes</button>
-                    <button id="social-no" class="btn-danger"><i class="fas fa-times mr-2"></i>No</button>
+                    <button id="social-yes" class="btn-primary btn-glow-purple"><i class="fas fa-check mr-2"></i>Yes</button>
+                    <button id="social-no" class="btn-danger btn-glow-purple"><i class="fas fa-times mr-2"></i>No</button>
                 </div>
             </div>
             <div id="checklist-step-2" class="space-y-4 hidden">
                 <p class="text-lg">Do you have all your study materials and a water bottle?</p>
                 <div class="flex justify-center space-x-4">
-                    <button id="materials-yes" class="btn-primary"><i class="fas fa-check mr-2"></i>Yes</button>
-                    <button id="materials-no" class="btn-danger"><i class="fas fa-times mr-2"></i>No</button>
+                    <button id="materials-yes" class="btn-primary btn-glow-purple"><i class="fas fa-check mr-2"></i>Yes</button>
+                    <button id="materials-no" class="btn-danger btn-glow-purple"><i class="fas fa-times mr-2"></i>No</button>
                 </div>
             </div>
         </div>
@@ -88,7 +88,7 @@
             </div>
 
             <div class="flex justify-center mt-6 flex-shrink-0" style="flex-shrink: 0;">
-                <button id="close-rules" class="btn-primary"><i class="fas fa-check mr-2"></i>Got it!</button>
+                <button id="close-rules" class="btn-primary btn-glow-purple"><i class="fas fa-check mr-2"></i>Got it!</button>
             </div>
         </div>
     </div>
@@ -96,15 +96,15 @@
     <!-- Main Workspace -->
     <div id="workspace" class="relative z-10 w-full h-full hidden">
         <!-- Header Section with Logo and Sound Control -->
-        <div class="fixed top-0 left-0 right-0 bg-black bg-opacity-60 backdrop-blur-sm p-2 z-30 shadow-lg">
+        <div class="fixed top-0 left-0 right-0 bg-black bg-opacity-10 backdrop-blur-sm p-2 z-30 shadow-lg">
             <div class="container mx-auto flex justify-between items-center">
                 <div class="logo-container">
-                    <h1 class="text-3xl font-bold logo-text">FocusOS</h1>
+                    <img src="/static/assets/logo/logo.png" alt="FocusOS Logo" class="logo-image">
                 </div>
                 <div class="flex items-center space-x-4">
                     <!-- Notification Bell -->
                     <div class="relative">
-                        <button id="notification-bell" class="text-white hover:text-purple-300 transition-colors relative">
+                        <button id="notification-bell" class="text-white hover:text-purple-300 transition-colors relative ">
                             <i class="fas fa-bell text-xl"></i>
                             <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
                         </button>
@@ -121,32 +121,25 @@
                             </div>
                         </div>
                     </div>
-                    <button id="sound-toggle" class="text-white p-2 rounded-full hover:bg-opacity-80 transition-all duration-300">
-                        <i class="fas fa-volume-up"></i>
-                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Vertical Navigation Bar -->
-        <div class="fixed top-16 left-0 h-full bg-black bg-opacity-50 z-30 vertical-nav">
+        <div class="fixed top-16 left-0 h-full bg-black bg-opacity-0 z-30 vertical-nav">
             <div class="nav-tabs-wrapper w-full h-full overflow-y-auto">
                 <div class="flex flex-col h-full space-y-2">
                     <button class="nav-tab active" data-target="timer-panel">
                         <i class="fas fa-clock"></i>
                         <span class="tab-text">Timer</span>
                     </button>
-                    <button class="nav-tab" data-target="progress-panel">
-                        <i class="fas fa-chart-line"></i>
-                        <span class="tab-text">Progress</span>
+                    <button class="nav-tab" data-target="stats-panel">
+                        <i class="fas fa-chart-line"></i> <!-- Changed icon for consolidated stats -->
+                        <span class="tab-text">Stats</span>
                     </button>
                     <button class="nav-tab" data-target="environment-panel">
-                        <i class="fas fa-image"></i>
+                        <i class="fas fa-cog"></i> <!-- Gear icon for Environment -->
                         <span class="tab-text">Environment</span>
-                    </button>
-                    <button class="nav-tab" data-target="stats-panel">
-                        <i class="fas fa-chart-bar"></i>
-                        <span class="tab-text">Stats</span>
                     </button>
                     <button class="nav-tab" data-target="daphinix-panel">
                         <i class="fas fa-robot"></i>
@@ -160,10 +153,7 @@
                         <i class="fas fa-users"></i>
                         <span class="tab-text">Study Rooms</span>
                     </button>
-                    <button class="nav-tab" data-target="leaderboard-panel">
-                        <i class="fas fa-trophy"></i>
-                        <span class="tab-text">Leaderboard</span>
-                    </button>
+                    <!-- Removed Progress and Leaderboard, Guide tab might be kept or removed based on whether its content is merged to Stats -->
                     <button class="nav-tab" data-target="guide-panel">
                         <i class="fas fa-book-open"></i>
                         <span class="tab-text">Guide</span>
@@ -177,14 +167,16 @@
         </div>
         
         <!-- Control Buttons (Focus Mode & Rules) -->
-        <div class="fixed bottom-4 right-4 z-30 flex space-x-3">
-            <button id="focus-mode" class="bg-black bg-opacity-60 text-white p-3 rounded-full hover:bg-opacity-80 transition-all duration-300 tooltip">
+        <div class="fixed bottom-4 right-4 z-30 flex space-x-3" id="control-buttons-container">
+            <button id="focus-mode" class="control-button-style bg-black bg-opacity-60 text-white p-3 rounded-full hover:bg-opacity-80 transition-all duration-300 tooltip">
                 <i class="fas fa-eye"></i>
-                <span class="tooltiptext">Focus Mode</span>
-            </button>
-            <button id="rules-button" class="bg-black bg-opacity-60 text-white p-3 rounded-full hover:bg-opacity-80 transition-all duration-300 tooltip">
+             </button>
+            <button id="rules-button" class="control-button-style bg-black bg-opacity-60 text-white p-3 rounded-full hover:bg-opacity-80 transition-all duration-300 tooltip">
                 <i class="fas fa-info-circle"></i>
-                <span class="tooltiptext">Rules</span>
+            </button>
+            <button id="exit-focus-mode" class="control-button-style hidden">
+                <i class="fas fa-times-circle"></i>
+                <span class="tooltiptext">Exit Focus Mode</span>
             </button>
         </div>
 
@@ -194,7 +186,7 @@
             <div id="timer-panel" class="content-panel active">
                 <div class="flex flex-col items-center justify-center h-full">
                     <!-- Purple Circle Timer -->
-                    <div class="timer-circle mb-8">
+                    <div id="pomodoro-clock-container" class="timer-circle mb-8">
                         <h2 class="text-center text-white text-xl mb-4">Pomodoro Timer</h2>
                         <div class="time-display">
                             <div id="timer-display" class="timer-text">25:00</div>
@@ -204,17 +196,21 @@
                     
                     <!-- Timer Controls -->
                     <div class="w-full max-w-xs space-y-3 mb-5">
-                        <button id="start-timer" class="w-full py-3 rounded-md bg-green-500 text-white font-semibold flex items-center justify-center">
-                            <i class="fas fa-play mr-2"></i> Start
-                        </button>
-                        <button id="pause-timer" class="w-full py-3 rounded-md bg-yellow-500 text-white font-semibold flex items-center justify-center hidden">
-                            <i class="fas fa-pause mr-2"></i> Pause
-                        </button>
-                        <button id="reset-timer" class="w-full py-3 rounded-md bg-red-500 text-white font-semibold flex items-center justify-center">
-                            <i class="fas fa-redo-alt mr-2"></i> Reset
-                        </button>
+                        <!-- Container for All Timer Buttons -->
+                        <div class="timer-buttons-container flex space-x-3">
+                            <button 
+                                id="start-timer" 
+                                class="btn btn-primary flex-1">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button id="pause-timer" class="btn btn-warning flex-1 hidden">
+                                <i class="fas fa-pause"></i>
+                            </button>
+                            <button id="reset-timer" class="btn btn-danger flex-1">
+                                <i class="fas fa-redo-alt"></i> 
+                            </button>
+                        </div>
                     </div>
-                    
                     <!-- Duration Inputs -->
                     <div class="flex justify-between w-full max-w-xs">
                         <div class="duration-input">
@@ -324,33 +320,113 @@
                 </div>
             </div>
 
-            <!-- Stats Panel -->
+            <!-- Stats Panel (Combined Progress and Leaderboard) -->
             <div id="stats-panel" class="content-panel">
-                <div class="bg-black bg-opacity-60 text-white p-6 rounded-xl max-w-3xl mx-auto">
+                <div class="bg-black bg-opacity-60 text-white p-6 rounded-xl max-w-4xl mx-auto">
                     <h2 class="text-2xl font-bold mb-6 text-center text-purple-300">Your Study Statistics</h2>
                     
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div class="stats-card">
-                            <i class="fas fa-clock text-4xl text-purple-300"></i>
-                            <h3 class="mt-2">Total Time</h3>
-                            <p id="stats-total-time" class="text-2xl font-bold">0 min</p>
+                    <!-- Progress Section -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4 text-center text-purple-300 border-b border-purple-500 pb-2">Your Progress</h3>
+                        
+                        <div class="level-container mb-6">
+    <div class="level-badge">
+        <span id="stats-level">1</span>
+    </div>
+    <div class="ml-3 flex-grow">
+        <p class="text-sm text-gray-300">Level</p>
+        <div class="w-full bg-gray-700 rounded-full h-2.5 mt-1">
+            <div id="stats-xp-progress" class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+        <p class="text-xs mt-1"><span id="stats-xp">0</span> / <span id="stats-xp-needed">100</span> XP</p>
+    </div>
+</div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            <div class="stats-card">
+                                <i class="fas fa-clock text-4xl text-purple-300"></i>
+                                <h3 class="mt-2">Total Time</h3>
+                                <p id="stats-total-time" class="text-2xl font-bold">0 min</p>
+                            </div>
+                            <div class="stats-card">
+                                <i class="fas fa-fire text-4xl text-orange-400"></i>
+                                <h3 class="mt-2">Streak</h3>
+                                <p id="stats-streak" class="text-2xl font-bold">0 days</p>
+                            </div>
+                            <div class="stats-card">
+                                <i class="fas fa-calendar-alt text-4xl text-purple-300"></i>
+                                <h3 class="mt-2">Sessions</h3>
+                                <p id="stats-total-sessions" class="text-2xl font-bold">0</p>
+                            </div>
                         </div>
-                        <div class="stats-card">
-                            <i class="fas fa-calendar-alt text-4xl text-purple-300"></i>
-                            <h3 class="mt-2">Sessions</h3>
-                            <p id="stats-total-sessions" class="text-2xl font-bold">0</p>
+                        
+                        <div id="badges" class="mb-6">
+                            <h3 class="font-bold text-purple-300 mb-3"><i class="fas fa-trophy mr-1"></i> Badges:</h3>
+                            <div class="bg-gray-800 bg-opacity-60 p-4 rounded-lg">
+                                <div id="badges-list" class="flex justify-center space-x-6 flex-wrap gap-y-4">
+                                    <!-- Badges will be rendered here by script.js -->
+                                    <p class="text-gray-400 text-sm italic hidden" id="no-badges-message">No badges earned yet. Keep up the good work!</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stats-card">
-                            <i class="fas fa-medal text-4xl text-purple-300"></i>
-                            <h3 class="mt-2">Badges</h3>
-                            <p id="stats-total-badges" class="text-2xl font-bold">0</p>
+                        
+                        <div id="quests-container" class="mb-6">
+                            <h3 class="font-bold text-purple-300 mb-3"><i class="fas fa-map-signs mr-1"></i> Active Quests:</h3>
+                            <div id="active-quests-list" class="space-y-3 bg-gray-800 bg-opacity-60 p-4 rounded-lg max-h-60 overflow-y-auto">
+                                <!-- Active quests will be rendered here -->
+                                <p class="text-gray-400 text-sm italic" id="no-quests-message">No active quests. New quests may appear daily or weekly!</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <h3 class="text-lg font-bold mb-2 text-purple-300"><i class="fas fa-history mr-1"></i> Recent Sessions</h3>
+                            <div id="recent-sessions" class="max-h-48 overflow-y-auto bg-gray-800 bg-opacity-60 p-4 rounded-lg">
+                                <p class="text-gray-400 text-center">No sessions recorded yet.</p>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="mb-6">
-                        <h3 class="text-lg font-bold mb-2 text-purple-300">Study History</h3>
-                        <div id="recent-sessions" class="max-h-48 overflow-y-auto bg-gray-800 bg-opacity-60 p-4 rounded-lg">
-                            <p class="text-gray-400 text-center">No sessions recorded yet.</p>
+                    <!-- Leaderboard Section -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-center text-purple-300 border-b border-purple-500 pb-2">
+                            <i class="fas fa-trophy text-yellow-400 mr-2"></i>Leaderboard
+                        </h3>
+                        <div class="mb-6 flex justify-center">
+                            <div class="inline-flex rounded-md shadow-sm bg-gray-800 p-1">
+                                <button data-type="xp" class="leaderboard-filter-btn active px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-l-md hover:bg-purple-700 focus:z-10 focus:ring-2 focus:ring-purple-500">
+                                    <i class="fas fa-star mr-1"></i> Top XP
+                                </button>
+                                <button data-type="streak" class="leaderboard-filter-btn px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white focus:z-10 focus:ring-2 focus:ring-purple-500 rounded-r-md">
+                                    <i class="fas fa-fire mr-1"></i> Top Streaks
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="leaderboard-loading" class="text-center text-gray-400 my-8 hidden">
+                            <i class="fas fa-spinner fa-spin fa-2x mr-2"></i>
+                            <p>Loading leaderboard...</p>
+                        </div>
+                        <div id="leaderboard-error" class="text-center text-red-400 my-8 hidden">
+                            <i class="fas fa-exclamation-triangle fa-2x mr-2"></i>
+                            <p>Could not load leaderboard. Please try again later.</p>
+                        </div>
+
+                        <div class="overflow-hidden shadow-lg rounded-lg border border-gray-700">
+                            <table class="min-w-full bg-gray-800">
+                                <thead class="bg-gray-700">
+                                    <tr>
+                                        <th class="py-3 px-4 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Rank</th>
+                                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
+                                        <th class="py-3 px-4 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Level</th>
+                                        <th class="py-3 px-4 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">XP</th>
+                                        <th class="py-3 px-4 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Streak</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboard-table-body" class="divide-y divide-gray-700">
+                                    <!-- Leaderboard rows will be injected here -->
+                                </tbody>
+                            </table>
+                            <p id="no-leaderboard-data" class="text-gray-400 text-center py-6 hidden bg-gray-800">No data available for this leaderboard.</p>
                         </div>
                     </div>
                 </div>
@@ -626,22 +702,9 @@
                         <p id="quote-display" class="text-lg italic text-gray-200">"The best way to predict the future is to create it."</p>
                     </div>
 
-                    <!-- Meme Section -->
-                    <div class="mb-6">
-                        <div class="flex flex-col sm:flex-row justify-between items-center mb-3">
-                            <h3 class="text-xl font-semibold text-purple-300 mb-2 sm:mb-0">Daily Meme Dose</h3>
-                            <select id="meme-category-select" class="settings-select sm:w-auto text-sm py-1.5 px-3">
-                                <option value="general" selected>General</option>
-                                <option value="study">Study Humor</option>
-                                <option value="wholesome">Wholesome</option>
-                                <option value="programming">Programming</option>
-                                <option value="motivation">Motivational</option>
-                            </select>
-                        </div>
-                        <div id="meme-container" class="p-2 sm:p-4 bg-gray-800 bg-opacity-70 rounded-lg shadow-lg min-h-[250px] sm:min-h-[300px] flex items-center justify-center">
-                            <img id="meme-display" src="/static/assets/images/placeholder_meme.png" alt="Motivational Meme" class="max-w-full max-h-72 sm:max-h-80 rounded">
-                        </div>
-                    </div>
+                    
+                       
+                   
 
                     <!-- Fact of the Day -->
                     <div id="fact-container" class="mb-8 p-4 bg-gray-800 bg-opacity-70 rounded-lg shadow-lg min-h-[80px] flex flex-col items-center justify-center">
