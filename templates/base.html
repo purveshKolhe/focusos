@@ -109,8 +109,9 @@
                 const unsubscribe = firebase.auth().onAuthStateChanged(user => {
                     unsubscribe(); 
                     console.log(`[Base.html:Head] Initial onAuthStateChanged. Firebase User:`, user ? user.uid : "null");
-                    if (!user) {
-                        // Force logout and reload if user is null
+                    // DO NOT force a reload on the login or register pages.
+                    // This was the cause of the infinite reload loop.
+                    if (!user && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
                         forceLogoutAndReload();
                     }
                     console.log("[Base.html:Head] Resolving firebaseAuthReady from onAuthStateChanged with user:", user);
