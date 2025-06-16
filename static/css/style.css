@@ -1,3 +1,54 @@
+/* General Control Button Styling */
+.control-button-style {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 0.75rem; /* 12px */
+    border-radius: 9999px; /* full */
+    transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.control-button-style:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+}
+
+.control-button-style i {
+    font-size: 1.125rem; /* 18px */
+}
+
+.logo-image {
+    max-height: 30px; /* Further adjusted logo size */
+}
+
+.tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* Position the tooltip above the button */
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext, .control-button-style:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+
 /* Notification System Styles */
 .notification-bell {
     position: relative;
@@ -8,8 +59,23 @@
     z-index: 100;
 }
 
-.notification-bell:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+#notification-bell {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 0.75rem; /* 12px */
+    border-radius: 9999px; /* full */
+    transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#notification-bell:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
 }
 
 .notification-badge {
@@ -105,3 +171,50 @@
         transform: translateY(0);
     }
 } 
+
+/* Focus Mode Styles */
+body.focus-mode .vertical-nav,
+body.focus-mode .fixed.top-0 .flex.items-center.space-x-4, /* Hides notification bell container */
+body.focus-mode #control-buttons-container button:not(#exit-focus-mode),
+body.focus-mode .content-panel:not(#timer-panel),
+body.focus-mode .nav-tabs-wrapper,
+body.focus-mode #notification-bell,
+body.focus-mode .fixed.top-16.left-0.h-full.bg-black.bg-opacity-0.z-30.vertical-nav, /* Hides the entire nav bar including the background */
+body.focus-mode #workspace > .fixed.top-0.left-0.right-0, /* Hide header */
+body.focus-mode #rules-modal, /* Hide rules modal in focus mode */
+body.focus-mode #background-container /* Hide background container */
+{
+    display: none !important;
+}
+
+body.focus-mode {
+    background-color: #000; /* Optional: Set a plain black background for focus mode */
+}
+
+body.focus-mode #pomodoro-clock-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(2);
+    transition: transform 0.5s ease-in-out;
+    cursor: pointer; /* Add cursor pointer for enlarge on click */
+    z-index: 10000; /* Ensure clock is on top */
+}
+
+body.focus-mode #exit-focus-mode {
+    display: flex !important; /* Ensure it's flex to align icon */
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10001; /* Ensure exit button is on top */
+}
+
+/* Ensure logo is hidden in focus mode */
+body.focus-mode .logo-container {
+    display: none !important;
+}
+
+/* Style for further enlarged Pomodoro clock on click in focus mode */
+body.focus-mode #pomodoro-clock-container.enlarged-clock {
+    transform: translate(-50%, -50%) scale(2.5); /* Even larger scale */
+}
