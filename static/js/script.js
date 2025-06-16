@@ -2564,10 +2564,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 sanaInitialMoods.push($(this).val());
             });
             $('#sana-mood-modal').addClass('hidden');
-            $('.nav-tab[data-target="sana-panel"]').click();
 
+            // Manually activate the Sana tab and panel to avoid a click loop
+            const sanaTab = $('.nav-tab[data-target="sana-panel"]');
+            const sanaPanel = $('#sana-panel');
+
+            $('.nav-tab').removeClass('active'); // Deactivate all tabs
+            sanaTab.addClass('active'); // Activate Sana tab
+
+            $('.content-panel').removeClass('active'); // Hide all panels
+            sanaPanel.addClass('active sana-theme'); // Show Sana panel and ensure theme is applied
+
+            // If there are moods, send the first message to the backend
             if (sanaInitialMoods.length > 0) {
-                // Don't add a message to UI here, just send the first message to the backend
                 sendSanaMessage(true);
             }
         });
@@ -2600,7 +2609,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Function to send a message to Sana
         async function sendSanaMessage(isInitialMessage = false) {
-            const input = $('#sanaInput');
+            const input = $('#sana-input'); // CORRECTED ID
             const userMessage = input.val().trim();
             let messageToSend = userMessage;
 
@@ -2657,20 +2666,43 @@ document.addEventListener('DOMContentLoaded', function() {
         // Function to show/hide the typing indicator
         function showTypingIndicator(show, agent) { // agent can be 'daphinix' or 'sana'
             const daphinixIndicator = $('#daphinix-panel .typing-indicator');
-            const sanaIndicator = $('#sana-panel .typing-indicator');
-
-            let indicator;
+            
             if (agent === 'sana') {
-                indicator = sanaIndicator;
-            } else {
-                indicator = daphinixIndicator;
-            }
+                const responseArea = $('#sana-responseArea');
+                const indicatorId = 'sana-typing-indicator-bubble';
 
-            if (indicator.length) {
+                // Remove any existing indicator first
+                $(`#${indicatorId}`).remove();
+
                 if (show) {
-                    indicator.css('display', 'flex');
-                } else {
-                    indicator.css('display', 'none');
+                    const avatarImg = '<img src="/static/assets/logo/sana.png" alt="Sana" class="w-8 h-8 rounded-full">';
+                    const typingIndicatorHTML = `
+                        <div class="message bot-message animate-fade-in" id="${indicatorId}">
+                            <div class="message-avatar-placeholder">
+                                ${avatarImg}
+                            </div>
+                            <div class="message-bubble-wrapper">
+                                <div class="message-header">Sana</div>
+                                <div class="message-content">
+                                    <div class="typing-indicator">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                    responseArea.append(typingIndicatorHTML);
+                    responseArea.scrollTop(responseArea[0].scrollHeight);
+                }
+            } else { // Keep original logic for other agents like daphinix
+                const indicator = daphinixIndicator;
+                 if (indicator.length) {
+                    if (show) {
+                        indicator.css('display', 'flex');
+                    } else {
+                        indicator.css('display', 'none');
+                    }
                 }
             }
         }
@@ -2701,21 +2733,65 @@ document.addEventListener('DOMContentLoaded', function() {
         // Event listener for sending a message
         $(document).on('click', '#sana-send-button', function() {
             sendSanaMessage();
-            showTypingIndicator(true);
         });
 
         // Event listener for keydown
-        $(document).on('keydown', '#sanaInput', function(e) {
+        $(document).on('keydown', '#sana-input', function(e) { // CORRECTED ID
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendSanaMessage();
-                showTypingIndicator(true);
             }
         });
 
-        // Event listener for keyup
-        $(document).on('keyup', '#sanaInput', function() {
-            showTypingIndicator(false);
+        // Add a specific click handler for the Sana tab to show the modal
+        $('#sana-tab').on('click', function() {
+            // Only show the modal if the tab is being clicked to be activated
+            if (!$(this).hasClass('active')) {
+                $('#sana-mood-modal').removeClass('hidden');
+            }
+            // The generic .nav-tab handler will manage the active state and panel visibility
+        });
+
+        // Add the generic tab switcher that handles all tabs EXCEPT Sana's initial click
+        $(".nav-tab").not('#sana-tab').on('click', function() {
+            // This handler is for all tabs that DON'T need a modal first.
+            // It will also run when Sana's tab is clicked programmatically or after the modal is handled.
+            const targetPanelId = $(this).data('target');
+            
+            // Theme application for Sana
+            if (targetPanelId === 'sana-panel') {
+                $('#sana-panel').addClass('sana-theme');
+            }
+
+            $('.nav-tab').removeClass('active');
+            $(this).addClass('active');
+
+            $('.content-panel').removeClass('active');
+            $('#' + targetPanelId).addClass('active');
+
+            if (targetPanelId === 'timer-panel') {
+                $('#timer-panel').css('display', 'flex'); 
+            }
+        });
+
+        // Handle closing the modal
+        $('#sana-mood-modal .close-button, #sana-mood-modal').on('click', function(e) {
+            if (e.target === this || $(this).hasClass('close-button')) {
+                $('#sana-mood-modal').addClass('hidden');
+                // This was causing an infinite loop. Don't re-click the tab.
+                // Instead, just ensure the tab and panel are active if they aren't.
+                if (!$sanaTab.hasClass('active')) {
+                    $('.nav-tab').removeClass('active');
+                    $('.content-panel').removeClass('active');
+                    $sanaTab.addClass('active');
+                    $('#sana-panel').addClass('active');
+                }
+            }
+        });
+
+        // Handle the "Start Chat" button
+        $('#start-sana-chat-btn').on('click', function() {
+            // ... existing code ...
         });
     }
 });
