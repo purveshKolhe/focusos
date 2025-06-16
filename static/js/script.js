@@ -332,6 +332,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (targetPanel === 'guide-panel') {
                 renderGamificationGuide(); // Render guide when tab is clicked
+            } else if (targetPanel === 'stats-panel') {
+                loadLeaderboardData('xp', '#stats-panel'); // Load leaderboard data for Stats panel
             }
             
             playSound("sound-click");
@@ -683,18 +685,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Pomodoro Timer Logic
-        let isRunning = false;
-        let isPaused = false;
-        let isWorkSession = true;
-        let timeLeft = parseInt($("#work-duration").val()) * 60;
-        let totalTime = timeLeft; 
-        let workDuration = parseInt($("#work-duration").val());
-        let breakDuration = parseInt($("#break-duration").val());
-        let timerInterval;
+        window.isRunning = false;
+        window.isPaused = false;
+        window.isWorkSession = true;
 
-        function updateTimerDisplay() {
-            let minutes = Math.floor(timeLeft / 60);
-            let seconds = timeLeft % 60;
+        // Initialize with defaults if specific inputs are not found or invalid
+        let initialWorkVal = parseInt($("#work-duration").val());
+        window.workDuration = isNaN(initialWorkVal) ? 25 : initialWorkVal;
+
+        let initialBreakVal = parseInt($("#break-duration").val());
+        window.breakDuration = isNaN(initialBreakVal) ? 5 : initialBreakVal;
+
+        window.timeLeft = (window.isWorkSession ? window.workDuration : window.breakDuration) * 60;
+        window.totalTime = window.timeLeft; 
+        window.timerInterval;
+
+        window.updateTimerDisplay = function() {
+            let minutes, seconds;
+            if (isNaN(timeLeft) || timeLeft === null || typeof timeLeft === 'undefined') {
+                // Fallback if timeLeft is not a number
+                // Try to use workDuration, or default to 25 if workDuration is also not set
+                const defaultWorkMinutes = (typeof workDuration !== 'undefined' && !isNaN(workDuration)) ? workDuration : 25;
+                minutes = defaultWorkMinutes;
+                seconds = 0;
+                console.warn('[Timer] updateTimerDisplay called with invalid timeLeft. Defaulting to', `${minutes}:00`);
+            } else {
+                minutes = Math.floor(timeLeft / 60);
+                seconds = timeLeft % 60;
+            }
+            
             const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
             $("#timer-display").text(timeString);
@@ -704,7 +723,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.title = `${timeString} - FocusOS`;
         }
 
-        function startTimer() {
+        window.startTimer = function() {
             if (!isRunning) {
                 isRunning = true;
                 isPaused = false;
@@ -733,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        function pauseTimer() {
+        window.pauseTimer = function() {
             if (isRunning && !isPaused) {
                 isRunning = false;
                 isPaused = true;
@@ -747,14 +766,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        function resetTimer() {
+        window.resetTimer = function(newWorkDuration, newBreakDuration) {
             clearInterval(timerInterval);
             isRunning = false;
             isPaused = false;
             
-            workDuration = parseInt($("#work-duration").val());
-            breakDuration = parseInt($("#break-duration").val());
+            // Use provided durations if available, otherwise read from input fields
+            if (typeof newWorkDuration !== 'undefined' && !isNaN(parseInt(newWorkDuration))) {
+                workDuration = parseInt(newWorkDuration);
+            } else {
+                workDuration = parseInt($("#work-duration").val());
+            }
+
+            if (typeof newBreakDuration !== 'undefined' && !isNaN(parseInt(newBreakDuration))) {
+                breakDuration = parseInt(newBreakDuration);
+            } else {
+                breakDuration = parseInt($("#break-duration").val());
+            }
             
+            // Ensure durations are numbers, default to 25/5 if NaN
+            if (isNaN(workDuration)) workDuration = 25;
+            if (isNaN(breakDuration)) breakDuration = 5;
+
             timeLeft = isWorkSession ? workDuration * 60 : breakDuration * 60;
             totalTime = timeLeft;
             
@@ -766,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showUIMessage("Timer", "Timer reset.", "info", true);
         }
         
-        function switchSession() {
+        window.switchSession = function() {
             isWorkSession = !isWorkSession;
             
             if (isWorkSession) {
@@ -781,7 +814,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTimerDisplay();
         }
         
-        function handleTimerComplete() {
+        window.handleTimerComplete = function() {
             playSound("sound-complete");
             
             if (isWorkSession) {
@@ -896,6 +929,7 @@ document.addEventListener('DOMContentLoaded', function() {
             { id: 'hotlink_video_20', name: 'Earth Spinning', type: 'video', category: 'abstract', path: 'https://assets.mixkit.co/videos/29351/29351-720.mp4', preview: 'https://assets.mixkit.co/videos/29351/29351-720.mp4' },
             { id: 'hotlink_video_21', name: 'Girl in Library', type: 'video', category: 'study', path: 'https://assets.mixkit.co/videos/4531/4531-720.mp4', preview: 'https://assets.mixkit.co/videos/4531/4531-720.mp4' },
             { id: 'hotlink_video_22', name: 'Cafe Hotlink', type: 'video', category: 'cafe', path: 'https://assets.mixkit.co/videos/29050/29050-720.mp4', preview: 'https://assets.mixkit.co/videos/29050/29050-720.mp4' },
+            
             // Local Images (Restored)
             { id: 'image1', name: 'Starry Night', type: 'image', category: 'nature', path: '/static/assets/images/starry_night.jpg', preview: '/static/assets/images/starry_night.jpg' },
             { id: 'image2', name: 'Ocean Waves', type: 'image', category: 'nature', path: '/static/assets/images/ocean_waves.jpg', preview: '/static/assets/images/ocean_waves.jpg' },
@@ -1216,6 +1250,132 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save user data every minute
         // setInterval(saveUserData, 60000); // Auto-save is fine, but session completion is key
         
+        // Function to update all progress UI elements
+        function updateProgressUI(progress) {
+            // Update level and XP
+            $("#level").text(progress.level || 1);
+            $("#xp").text(progress.xp || 0);
+            
+            // Calculate XP needed for next level
+            const baseXpForLevelUp = gamificationSettings.leveling?.baseXpForLevelUp || 100;
+            const xpNeeded = (progress.level || 1) * baseXpForLevelUp;
+            $("#xp-needed").text(xpNeeded);
+            
+            // Update XP progress bar
+            const xpPercentage = Math.min(100, Math.round(((progress.xp || 0) / xpNeeded) * 100));
+            $("#xp-progress").css("width", xpPercentage + "%");
+            
+            // Update other stats
+            $("#total-time").text((progress.total_time || 0) + " min");
+            $("#streak").text((progress.streak || 0) + " days");
+            
+            // Update Stats panel values
+            $("#stats-total-time").text((progress.total_time || 0) + " min");
+            $("#stats-streak").text((progress.streak || 0) + " days");
+            $("#stats-total-sessions").text(progress.sessions || 0);
+            
+            // Update badges
+            renderBadges(progress.badges || [], gamificationSettings.badges || {});
+            
+            // Update quests
+            renderActiveQuests(progress.activeQuests || [], gamificationSettings.quests || {});
+        }
+        
+        // Function to render badges in the badges list
+        function renderBadges(userBadges, badgeDefinitions) {
+            const $badgesList = $("#badges-list");
+            const $noBadgesMessage = $("#no-badges-message");
+            $badgesList.empty();
+            
+            if (!userBadges || userBadges.length === 0) {
+                $noBadgesMessage.removeClass("hidden");
+                return;
+            }
+            
+            $noBadgesMessage.addClass("hidden");
+            
+            userBadges.forEach(badgeId => {
+                const badgeDef = badgeDefinitions[badgeId] || {
+                    name: badgeId,
+                    icon: "fa-medal",
+                    color: "#8a2be2",
+                    textColor: "white"
+                };
+                
+                const badgeHtml = `
+                    <div class="badge-item" title="${badgeDef.description || ''}">
+                        <div class="badge-icon" style="background-color: ${badgeDef.color || '#8a2be2'}">
+                            <i class="fas ${badgeDef.icon || 'fa-medal'}" style="color: ${badgeDef.textColor || 'white'}"></i>
+                        </div>
+                        <div class="badge-name">${badgeDef.name || badgeId}</div>
+                    </div>
+                `;
+                
+                $badgesList.append(badgeHtml);
+            });
+            
+            // Update the badge count in the stats card
+            $("#stats-total-badges").text(userBadges.length);
+        }
+        
+        // Function to render active quests
+        function renderActiveQuests(activeQuests, questDefinitions) {
+            const $questsList = $("#active-quests-list");
+            const $noQuestsMessage = $("#no-quests-message");
+            $questsList.empty();
+            
+            if (!activeQuests || activeQuests.length === 0) {
+                $noQuestsMessage.removeClass("hidden");
+                return;
+            }
+            
+            $noQuestsMessage.addClass("hidden");
+            
+            activeQuests.forEach(quest => {
+                const questType = quest.type.split('_')[0]; // 'daily' or 'weekly'
+                const questId = quest.type.split('_')[1]; // The quest template ID
+                
+                // Find the quest definition
+                const questDef = questDefinitions[questType]?.find(q => q.id === questId) || {
+                    title: quest.title || "Quest",
+                    icon: "fa-tasks",
+                    descriptionTemplate: quest.description || "Complete the quest"
+                };
+                
+                // Calculate progress percentage
+                const progressPercent = Math.min(100, Math.round((quest.progress / quest.target) * 100));
+                
+                const questHtml = `
+                    <div class="quest-item">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <i class="fas ${questDef.icon || 'fa-tasks'} text-purple-400 mr-2"></i>
+                                <div>
+                                    <h4 class="font-medium">${quest.title || questDef.title}</h4>
+                                    <p class="text-sm text-gray-400">${quest.description || questDef.descriptionTemplate.replace('{N}', quest.target)}</p>
+                                </div>
+                            </div>
+                            <div class="text-sm">${quest.progress} / ${quest.target}</div>
+                        </div>
+                        <div class="quest-progress">
+                            <div class="quest-progress-bar" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                `;
+                
+                $questsList.append(questHtml);
+            });
+        }
+        
+        // Function to load and display leaderboard data
+        async function loadLeaderboardData(type = 'xp', contextSelector = '') {
+            // Call the existing fetchAndRenderLeaderboard function
+            fetchAndRenderLeaderboard(type, contextSelector);
+        }
+        
+        // The leaderboard filter button click handler is now consolidated around line 2053.
+        // This handler was removed to prevent conflicts.
+        
         async function loadUserDataAndInitNotifications() {
             try {
                 console.log("[Main Interface] Waiting for Firebase Auth to be ready...");
@@ -1244,6 +1404,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     gamificationSettings.quests = userDataFromAPI.gamification_settings.quests || {};
                     gamificationSettings.leveling = userDataFromAPI.gamification_settings.leveling || { baseXpForLevelUp: 100 }; 
                     console.log("[Main Interface] Gamification settings loaded:", JSON.parse(JSON.stringify(gamificationSettings)));
+                    console.log("[Main Interface] Badge definitions from gamification_settings:", JSON.parse(JSON.stringify(gamificationSettings.badges)));
                 } else {
                     console.warn("[Main Interface] No gamification_settings received from API.");
                 }
@@ -1251,8 +1412,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update UI with userDataFromAPI.progress
                 if (userDataFromAPI.progress) {
                     currentUserProgress = userDataFromAPI.progress; // Store current progress
+                    currentUserProgress.username = displayUsername; // Ensure username is set for UI/leaderboard
+                    console.log("[Main Interface] User progress loaded:", JSON.parse(JSON.stringify(currentUserProgress)));
+                    console.log("[Main Interface] Badges from user progress (currentUserProgress.badges):", JSON.parse(JSON.stringify(currentUserProgress.badges)));
                     updateProgressUI(currentUserProgress); // New function to update all progress UI
+                } else {
+                    console.warn("[Main Interface] No progress data received from API for current user.");
                 }
+                
+                // Load leaderboard data
+                loadLeaderboardData();
 
 
                 // Now initialize the global notification system
@@ -1419,27 +1588,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function updateProgressUI(progressData) {
-            if (!progressData) {
-                console.warn("updateProgressUI called with no progressData");
-                return;
-            }
-            console.log("Updating UI with progress data:", progressData);
+    if (!progressData) {
+        console.warn("updateProgressUI called with no progressData");
+        return;
+    }
+    console.log("Updating UI with progress data:", progressData);
 
-            const currentLevel = progressData.level || 1;
-            const xpNeededForNextLevel = (gamificationSettings.leveling?.baseXpForLevelUp || 100) * currentLevel;
-
-            $("#level").text(currentLevel);
-            $("#xp").text(progressData.xp || 0);
-            $("#xp-needed").text(xpNeededForNextLevel);
-            
-            $("#total-time").text(progressData.total_time || 0);
-            $("#streak").text(progressData.streak || 0);
-            
-            $("#stats-total-time").text((progressData.total_time || 0) + " min");
-            $("#stats-total-sessions").text(progressData.sessions || 0);
-            
-            const progressPercentage = xpNeededForNextLevel > 0 ? ((progressData.xp || 0) / xpNeededForNextLevel) * 100 : 0;
-            $("#xp-progress").css("width", Math.min(100, progressPercentage) + "%"); // Cap at 100%
+    const currentLevel = progressData.level || 1;
+    const currentXp = progressData.xp || 0;
+    let xpNeededForNextLevel = 100;
+    if (gamificationSettings && gamificationSettings.leveling && typeof gamificationSettings.leveling.baseXpForLevelUp === 'number') {
+        xpNeededForNextLevel = gamificationSettings.leveling.baseXpForLevelUp * currentLevel;
+    }
+    $("#level").text(currentLevel);
+    $("#xp").text(currentXp);
+    $("#xp-needed").text(xpNeededForNextLevel);
+    $("#xp-progress").css("width", Math.min(100, (xpNeededForNextLevel > 0 ? (currentXp / xpNeededForNextLevel) * 100 : 0)) + "%");
+    $("#stats-level").text(currentLevel);
+    $("#stats-xp").text(currentXp);
+    $("#stats-xp-needed").text(xpNeededForNextLevel);
+    $("#stats-xp-progress").css("width", Math.min(100, (xpNeededForNextLevel > 0 ? (currentXp / xpNeededForNextLevel) * 100 : 0)) + "%");
+    $("#total-time").text(progressData.total_time || 0);
+    $("#streak").text(progressData.streak || 0);
+    $("#stats-total-time").text((progressData.total_time || 0) + " min");
+    $("#stats-total-sessions").text(progressData.sessions || 0);
+    let progressPercentage = 0;
+    if (xpNeededForNextLevel > 0) {
+        progressPercentage = (currentXp / xpNeededForNextLevel) * 100;
+    }
+    $("#xp-progress").css("width", Math.min(100, progressPercentage) + "%"); // Cap at 100%
 
             renderBadges(progressData.badges || [], gamificationSettings.badges || {});
             renderQuests(progressData.activeQuests || [], gamificationSettings.quests || {});
@@ -1469,31 +1646,63 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function renderBadges(userBadgeIds, badgeDefinitionsFromServer) {
-            const $badgesList = $("#badges-list");
-            $badgesList.empty();
+            console.log('[renderBadges] Called with userBadgeIds:', JSON.parse(JSON.stringify(userBadgeIds)));
+            console.log('[renderBadges] Called with badgeDefinitionsFromServer:', JSON.parse(JSON.stringify(badgeDefinitionsFromServer)));
+            
+            const $progressBadgesList = $("#progress-panel #badges-list");
+            const $statsBadgesList = $("#stats-panel #badges-list");
+            const $progressNoBadgesMessage = $("#progress-panel #no-badges-message");
+            const $statsNoBadgesMessage = $("#stats-panel #no-badges-message");
+
+            $progressBadgesList.empty();
+            $statsBadgesList.empty();
+            
             let awardedCount = 0;
             const badgeDefsToUse = badgeDefinitionsFromServer || gamificationSettings.badges || {};
+            console.log('[renderBadges] badgeDefsToUse:', JSON.parse(JSON.stringify(badgeDefsToUse)));
 
             if (userBadgeIds && userBadgeIds.length > 0 && Object.keys(badgeDefsToUse).length > 0) {
+                console.log('[renderBadges] Conditions met to render badges.');
+                $progressNoBadgesMessage.addClass("hidden");
+                $statsNoBadgesMessage.addClass("hidden");
+                
                 userBadgeIds.forEach(badgeId => {
+                    console.log('[renderBadges] Processing badgeId:', badgeId);
                     const badgeDef = badgeDefsToUse[badgeId];
+                    console.log('[renderBadges] Found badgeDef for ' + badgeId + ':', JSON.parse(JSON.stringify(badgeDef)));
                     if (badgeDef) {
+                        console.log('[renderBadges] badgeDef is valid, creating HTML for badgeId:', badgeId);
                         const badgeHtml = `
-                            <div id="badge-${badgeId}" class="badge tooltip shadow-md" style="background: ${badgeDef.color || '#777'}; color: ${badgeDef.textColor || 'white'}" title="${badgeDef.name} - ${badgeDef.description}">
-                                <i class="fas ${badgeDef.icon || 'fa-medal'}"></i>
-                                <span class="tooltiptext">${badgeDef.name}: ${badgeDef.description}</span>
-                            </div>`;
-                        $badgesList.append(badgeHtml);
+    <div class="badge-item">
+        <div class="badge-icon" style="background-color: ${badgeDef.color || '#8a2be2'}">
+            <i class="fas ${badgeDef.icon || 'fa-medal'}" style="color: ${badgeDef.textColor || 'white'}"></i>
+        </div>
+        <div class="badge-tooltip">${badgeDef.name ? `<strong>${badgeDef.name}</strong><br>` : ''}${badgeDef.description || ''}</div>
+    </div>
+`;
+
+                        // Append to both lists
+                        $progressBadgesList.append(badgeHtml);
+                        $statsBadgesList.append(badgeHtml); // Appending the string will create new distinct elements
+                        console.log('[renderBadges] Appended HTML for badgeId:', badgeId, 'to both lists.');
                         awardedCount++;
                     }
                 });
+            } else {
+                $progressNoBadgesMessage.removeClass("hidden");
+                $statsNoBadgesMessage.removeClass("hidden");
+                console.log('[renderBadges] Conditions NOT met to render badges. Displaying no badges message in both lists.');
+                if (!userBadgeIds || userBadgeIds.length === 0) {
+                    console.log("[renderBadges] Reason: No user badges to display or userBadgeIds is empty.", userBadgeIds);
+                }
+                if (Object.keys(badgeDefsToUse).length === 0) {
+                    console.log("[renderBadges] Reason: No badge definitions available.", badgeDefsToUse);
+                }
             }
             
-            if (awardedCount === 0) {
-                $("#no-badges-message").removeClass("hidden");
-            } else {
-                 $("#no-badges-message").addClass("hidden");
-            }
+            // Update the total badges count, assuming this ID is unique or the first one is intended.
+            // If #stats-total-badges also exists in #progress-panel, this might need adjustment too.
+            // For now, let's assume it's primarily for the stats panel or a general counter.
             $("#stats-total-badges").text(awardedCount);
         }
 
@@ -1866,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loadUserDataAndInitNotifications(); // Ensure this is called
             loadTodoList();
             loadChatHistory();
-            fetchAndRenderLeaderboard('xp'); // Initial load with XP by default
+            fetchAndRenderLeaderboard('xp', '#stats-panel'); // Initial load for Stats Panel
             fetchAndDisplayInspireContent(); // Initial load for Inspire Me tab
         });
 
@@ -1885,21 +2094,37 @@ document.addEventListener('DOMContentLoaded', function() {
             $this.removeClass('text-gray-300 hover:bg-gray-700').addClass('active bg-purple-600 text-white');
             
             const type = $this.data('type');
-            fetchAndRenderLeaderboard(type);
+            // The context for fetchAndRenderLeaderboard will be derived by the caller of loadLeaderboardData or directly
+            // For filter buttons, the context is determined by the button's parent panel
+            const panelId = $this.closest('.content-panel').attr('id');
+            fetchAndRenderLeaderboard(type, panelId ? '#' + panelId : '');
         });
 
-        async function fetchAndRenderLeaderboard(type) {
-            const $tbody = $("#leaderboard-table-body");
-            const $loading = $("#leaderboard-loading");
-            const $error = $("#leaderboard-error");
-            const $noData = $("#no-leaderboard-data");
+        async function fetchAndRenderLeaderboard(type, contextSelector = '') {
+            const $tbody = $(`${contextSelector} #leaderboard-table-body`);
+            const $loading = $(`${contextSelector} #leaderboard-loading`);
+            const $error = $(`${contextSelector} #leaderboard-error`);
+            const $noData = $(`${contextSelector} #no-leaderboard-data`);
             let currentFirebaseUser = null;
             try {
                  currentFirebaseUser = await window.firebaseAuthReady;
             } catch (e) {
                 console.warn("Could not get current Firebase user for leaderboard context:", e);
             }
-            const currentUsername = currentUserProgress?.username || (currentFirebaseUser ? currentFirebaseUser.displayName || currentFirebaseUser.email : null) || 'You'; // Fallback for display
+
+            // Determine the consistent identifier for the current user
+            let userIdentifierForMatching = null;
+            if (currentUserProgress && currentUserProgress.username && currentUserProgress.username.trim() !== "") {
+                userIdentifierForMatching = currentUserProgress.username;
+                console.log('[Leaderboard] Prioritizing username from currentUserProgress:', userIdentifierForMatching);
+            } else if (currentFirebaseUser && currentFirebaseUser.displayName && currentFirebaseUser.displayName.trim() !== "") {
+                userIdentifierForMatching = currentFirebaseUser.displayName;
+                console.log('[Leaderboard] Using displayName from FirebaseUser as fallback:', userIdentifierForMatching);
+            } else if (currentFirebaseUser && currentFirebaseUser.email) {
+                userIdentifierForMatching = currentFirebaseUser.email.split('@')[0]; // Fallback to email username part
+                console.log('[Leaderboard] Using email (username part) from FirebaseUser as final fallback:', userIdentifierForMatching);
+            }
+            console.log('[Leaderboard] Final userIdentifierForMatching:', userIdentifierForMatching);
 
             $tbody.empty();
             $loading.removeClass("hidden");
@@ -1915,57 +2140,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 const leaderboardData = await response.json(); // This is an array of top 20 users
 
                 if (leaderboardData && leaderboardData.length > 0) {
-                    let currentUserData = null;
-                    let currentUserRank = -1;
-
-                    leaderboardData.forEach((entry, index) => {
-                        if (entry.username === currentUserProgress.username) { // Assuming currentUserProgress.username is the unique ID
-                            currentUserData = entry;
-                            currentUserRank = entry.rank;
-                        }
-                    });
-
                     const displayEntries = [];
                     const addedUsernames = new Set();
 
-                    // 1. Add Top 3
-                    for (let i = 0; i < Math.min(3, leaderboardData.length); i++) {
+                    // 1. Add Top 5
+                    for (let i = 0; i < Math.min(5, leaderboardData.length); i++) {
                         displayEntries.push(leaderboardData[i]);
                         addedUsernames.add(leaderboardData[i].username);
                     }
 
-                    // 2. Add Current User and Neighbors (if not already in top 3)
-                    if (currentUserData && currentUserRank > 3) {
-                        const userIndexInFetchedData = leaderboardData.findIndex(u => u.username === currentUserData.username);
-                        if (userIndexInFetchedData !== -1) {
-                            // Add a separator if there's a gap between top 3 and user's section
-                            if (displayEntries.length > 0 && leaderboardData[userIndexInFetchedData-1] && 
-                                !addedUsernames.has(leaderboardData[userIndexInFetchedData-1].username) && 
-                                userIndexInFetchedData > displayEntries.length) { // Check if the preceding element is not the last of top 3
-                                displayEntries.push({isSeparator: true});
-                            }
+                    // 2. Handle Current User (using userIdentifierForMatching)
+                    let currentUserInTop5 = false;
+                    if (userIdentifierForMatching) {
+                        currentUserInTop5 = displayEntries.some(entry => entry.username === userIdentifierForMatching);
+                    }
 
-                            // User -1 (if exists and not already added)
-                            if (userIndexInFetchedData > 0 && !addedUsernames.has(leaderboardData[userIndexInFetchedData - 1].username)) {
-                                displayEntries.push(leaderboardData[userIndexInFetchedData - 1]);
-                                addedUsernames.add(leaderboardData[userIndexInFetchedData - 1].username);
+                    if (userIdentifierForMatching) {
+                        const currentUserEntryFromData = leaderboardData.find(entry => entry.username === userIdentifierForMatching);
+
+                        if (currentUserEntryFromData) { // Current user is in the fetched leaderboard data (top 20)
+                            if (!currentUserInTop5) { // And not already added as part of top 5
+                                // Add a separator if there's a visual gap before adding the user
+                                if (displayEntries.length > 0 && displayEntries[displayEntries.length - 1].rank < currentUserEntryFromData.rank - 1) {
+                                    displayEntries.push({ isSeparator: true });
+                                }
+                                displayEntries.push(currentUserEntryFromData);
+                                addedUsernames.add(userIdentifierForMatching); // Mark as added to display
                             }
-                            // Current User (if not already added - should not happen if rank > 3)
-                            if (!addedUsernames.has(currentUserData.username)){
-                                displayEntries.push(currentUserData);
-                                addedUsernames.add(currentUserData.username);
+                            // If currentUserInTop5 is true, they are already in displayEntries, no action needed.
+                        } else if (currentUserProgress && currentUserProgress.xp !== undefined) {
+                            // Current user is NOT in the fetched leaderboard data (top 20), but we have local progress info.
+                            // Ensure they are not already added (e.g. if somehow local data was stale and they dropped out of top 20)
+                            if (!addedUsernames.has(userIdentifierForMatching)) {
+                                if (displayEntries.length > 0) { // Add separator if top entries were displayed
+                                    displayEntries.push({ isSeparator: true, customText: "Your rank is not in the top list shown above." });
+                                }
+                                displayEntries.push({
+                                    rank: currentUserProgress.rank || "N/A",
+                                    username: userIdentifierForMatching, // Use the consistent identifier
+                                    level: currentUserProgress.level || 1,
+                                    xp: currentUserProgress.xp || 0,
+                                    streak: currentUserProgress.streak || 0,
+                                    isCurrentUserNotInTop: true
+                                });
+                                addedUsernames.add(userIdentifierForMatching); // Mark as added
                             }
-                            // User +1 (if exists and not already added)
-                            if (userIndexInFetchedData < leaderboardData.length - 1 && !addedUsernames.has(leaderboardData[userIndexInFetchedData + 1].username)) {
-                                displayEntries.push(leaderboardData[userIndexInFetchedData + 1]);
-                                // addedUsernames.add(leaderboardData[userIndexInFetchedData + 1].username); // No need to add to set if it's the last one added in this block
+                        } else {
+                            // User not in API data, AND no local progress for them, OR no identifier for them.
+                            // Only add this message if the user hasn't been identified and added in any form yet.
+                            if (!addedUsernames.has(userIdentifierForMatching) && displayEntries.length > 0) {
+                                displayEntries.push({ isSeparator: true, customText: "Your rank is not currently available." });
                             }
                         }
-                    } else if (currentUserData && currentUserRank <=3) {
-                        // User is in top 3, already added. Do nothing special here.
-                    } else if (!currentUserData && leaderboardData.length > 3) {
-                         // User not in top 20, add a separator after top 3 if there are more entries.
-                         displayEntries.push({isSeparator: true, customText: "Your rank is not in the top 20 for this board."})                    
+                    } else {
+                        // No userIdentifierForMatching could be determined. User is effectively anonymous.
+                        if (displayEntries.length > 0) {
+                            displayEntries.push({ isSeparator: true, customText: "Your rank cannot be displayed (user not identified)." });
+                        }
                     }
 
                     displayEntries.forEach(entry => {
@@ -1985,12 +2216,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         else if (entry.rank === 2) rankDisplay = '🥈';
                         else if (entry.rank === 3) rankDisplay = '🥉';
                         
-                        const isCurrentUserEntry = entry.username === currentUserProgress.username;
+                        // Determine if the current row is for the logged-in user
+                        const isCurrentUserEntry = (userIdentifierForMatching && entry.username === userIdentifierForMatching) || entry.isCurrentUserNotInTop;
+                        let highlightClass = '';
+                        if (isCurrentUserEntry) {
+                            highlightClass = 'bg-purple-700 bg-opacity-40 font-semibold text-white';
+                        } else {
+                            highlightClass = 'hover:bg-gray-700 bg-opacity-50';
+                        }
 
+                        const usernameDisplay = entry.username + (isCurrentUserEntry ? ' (You)' : '');
                         const row = `
-                            <tr class="text-sm ${isCurrentUserEntry ? 'bg-purple-700 bg-opacity-30 font-semibold' : 'hover:bg-gray-700 bg-opacity-50'} transition-colors">
+                            <tr class="text-sm ${highlightClass} transition-colors">
                                 <td class="py-2 px-3 border-b border-gray-700 text-center">${rankDisplay}</td>
-                                <td class="py-2 px-3 border-b border-gray-700">${entry.username} ${isCurrentUserEntry ? '(You)' : ''}</td>
+                                <td class="py-2 px-3 border-b border-gray-700">${usernameDisplay}</td>
                                 <td class="py-2 px-3 border-b border-gray-700 text-center">${entry.level}</td>
                                 <td class="py-2 px-3 border-b border-gray-700 text-right">${entry.xp}</td>
                                 <td class="py-2 px-3 border-b border-gray-700 text-center">${entry.streak}</td>
@@ -2240,6 +2479,24 @@ document.addEventListener('DOMContentLoaded', function() {
             showUIMessage("Environment", `Background changed to ${selectedOption.name}.`, "info", true);
             // Optionally close modal after selection
             // $backgroundModal.css('display', 'none'); 
+        });
+
+        // On page load, initialize UI with static backgrounds
+        $(document).ready(function() {
+            // Set default selected background if not in localStorage
+            const savedBgId = localStorage.getItem('selectedBackgroundId');
+            if (savedBgId && backgroundOptions.find(opt => opt.id === savedBgId)) {
+                currentSelectedBackgroundId = savedBgId;
+            } else {
+                currentSelectedBackgroundId = backgroundOptions.length > 0 ? backgroundOptions[0].id : null;
+            }
+            applyPageBackground(currentSelectedBackgroundId);
+            const initialSelectedOption = backgroundOptions.find(opt => opt.id === currentSelectedBackgroundId);
+            if (initialSelectedOption) {
+                $currentBgNameDisplay.text(initialSelectedOption.name);
+            }
+            // renderBgModalSubCategoryTabs(); // Only if you use subcategories
+            // renderBgModalGrid(); // If you want to render the grid immediately
         });
     }
 });
