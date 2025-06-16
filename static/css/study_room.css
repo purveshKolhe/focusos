@@ -47,66 +47,146 @@
     min-height: 0;
 }
 
-.timer-panel {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 10px;
-    padding: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.shared-timer {
+/* Styles for the timer container in study_room.html, mimicking .timer-circle from styles.css */
+#pomodoro-clock-container.timer-circle {
+    width: 320px; /* Increased width */
+    height: 220px; /* Increased height */
+    background-color: rgba(25, 25, 30, 0.7); /* Slightly darker, more opaque background */
+    border-radius: 30px; /* Slightly more pronounced rounding */
+    box-shadow: 0 0 20px rgba(128, 0, 128, 0.6), 0 0 40px rgba(128, 0, 128, 0.4); /* Enhanced glow */
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    color: #e0e0e0; /* General text color inside timer */
+    position: relative;
+    margin: 0 auto 2rem auto; /* Increased bottom margin */
+    animation: timerPulse 3s infinite; /* Adjusted animation timing */
 }
 
-.timer-display {
+/* Timer Circle Heading (e.g., "Pomodoro Timer") */
+#pomodoro-clock-container.timer-circle h2 {
+    font-size: 1.1rem; /* Slightly smaller to give more space to the time */
+    font-weight: 500;
+    margin-bottom: 0.75rem; /* Adjusted spacing */
+    color: #b0b0b0; /* Softer color for the heading */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Main Timer Text (e.g., 25:00) - Targeting #timer-display */
+#timer-display.timer-text {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    font-size: 5.5rem; /* Significantly larger timer text */
+    font-weight: 600; /* Bold but not overly so */
+    color: #ffffff; /* Bright white for high visibility */
+    line-height: 1;
+    margin-bottom: 0.5rem; /* Space below timer text */
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); /* Subtle white glow */
+}
+
+/* Session Label (e.g., "Work Session") - Targeting #session-label */
+#session-label.session-label {
+    font-family: 'Inter', 'Poppins', sans-serif;
+    font-size: 1rem; /* Slightly larger */
+    font-weight: 400;
+    color: #a0a0a0; /* Softer color */
+    margin-top: 0.25rem;
+    letter-spacing: 0.5px;
+}
+
+/* Timer Controls Container - Targeting .timer-buttons-container */
+.timer-buttons-container {
+    display: flex;
+    gap: 1rem; /* Adjust the gap as needed */
+    width: 100%;
+    max-width: 300px; /* Consistent with main timer */
+    margin-bottom: 1.5rem; /* Space below controls */
+}
+
+/* Styling for individual timer control buttons */
+.timer-buttons-container button {
+    padding: 1rem 0; /* Adjusted padding */
+    font-size: 1.1rem; /* Adjusted font size */
+    font-weight: 600;
+    border: none;
+    color: white;
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+    flex-grow: 1;
     text-align: center;
-    margin: 20px 0;
 }
 
-#shared-timer-display {
-    font-size: 48px;
-    font-weight: bold;
-    color: #fff;
-    font-family: monospace;
+/* Specific button colors matching main interface, using the correct IDs */
+.timer-buttons-container button#start-shared-timer {
+    background-color: rgba(40, 167, 69, 0.3);
+    border: 1px solid rgba(40, 167, 69, 0.5);
+}
+.timer-buttons-container button#start-shared-timer:hover {
+    background-color: rgba(40, 167, 69, 0.6);
+    transform: translateY(-2px);
 }
 
-#shared-session-label {
-    color: #a5b4fc;
-    font-size: 16px;
+.timer-buttons-container button#pause-shared-timer {
+    background-color: rgba(255, 193, 7, 0.3);
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+.timer-buttons-container button#pause-shared-timer:hover {
+    background-color: rgba(255, 193, 7, 0.6);
+    transform: translateY(-2px);
 }
 
-.timer-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+.timer-buttons-container button#reset-shared-timer {
+    background-color: rgba(220, 53, 69, 0.3);
+    border: 1px solid rgba(220, 53, 69, 0.5);
+}
+.timer-buttons-container button#reset-shared-timer:hover {
+    background-color: rgba(220, 53, 69, 0.6);
+    transform: translateY(-2px);
 }
 
-.timer-settings {
-    display: flex;
-    gap: 20px;
-}
-
-.setting-group {
+/* Duration Inputs Styling - Targeting .duration-input and its children */
+.duration-input {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: center; /* Center labels and inputs */
 }
 
-.setting-group label {
-    color: #fff;
-    margin-bottom: 5px;
+.duration-input label {
+    font-size: 0.85rem;
+    color: #b0b0b0;
+    margin-bottom: 0.3rem;
 }
 
-.setting-group input {
-    width: 60px;
-    padding: 5px;
-    border-radius: 5px;
-    border: 1px solid #4a5568;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+.duration-input input.duration-field {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f0f0f0;
+    border-radius: 6px;
+    padding: 0.5rem;
+    width: 70px; /* Adjust width as needed */
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.duration-input input.duration-field:focus {
+    outline: none;
+    border-color: #800080; /* Purple focus */
+    box-shadow: 0 0 0 2px rgba(128, 0, 128, 0.3);
+}
+
+/* Add timerPulse animation if not already globally defined */
+@keyframes timerPulse {
+    0% {
+        box-shadow: 0 0 20px rgba(128, 0, 128, 0.6), 0 0 40px rgba(128, 0, 128, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(160, 0, 160, 0.8), 0 0 60px rgba(160, 0, 160, 0.6);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(128, 0, 128, 0.6), 0 0 40px rgba(128, 0, 128, 0.4);
+    }
 }
 
 .right-panel {
