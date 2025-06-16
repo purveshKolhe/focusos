@@ -352,23 +352,39 @@ document.addEventListener('DOMContentLoaded', async function() {
             if(typeof addNotification === 'function') addNotification("Chat Error", "Could not load previous messages.", "warning");
         });
 
-    // Listen for timer updates
+    // Remove any duplicate room_timer_update listeners
+    socket.off('room_timer_update');
+
+    // Listen for timer updates (single handler)
     socket.on('room_timer_update', function(data) {
-        if (data.room === currentRoom) {
-            updateTimerDisplay(data.timeLeft);
-            updateSessionLabel(data.isWorkSession);
-            
-            const startSharedTimer = document.getElementById('start-shared-timer');
-            const pauseSharedTimer = document.getElementById('pause-shared-timer');
-            if(startSharedTimer && pauseSharedTimer){
+        if (data.room !== currentRoom) return;
+        updateStudyRoomTimerDisplay(data.timeLeft);
+        updateSessionLabel(data.isWorkSession);
+        const startSharedTimer = document.getElementById('start-shared-timer');
+        const pauseSharedTimer = document.getElementById('pause-shared-timer');
+        if(startSharedTimer && pauseSharedTimer){
             if (data.isRunning) {
-                    startSharedTimer.classList.add('hidden');
-                    pauseSharedTimer.classList.remove('hidden');
+                startSharedTimer.classList.add('hidden');
+                pauseSharedTimer.classList.remove('hidden');
             } else {
-                    startSharedTimer.classList.remove('hidden');
-                    pauseSharedTimer.classList.add('hidden');
-                }
+                startSharedTimer.classList.remove('hidden');
+                pauseSharedTimer.classList.add('hidden');
+                clearInterval(timerInterval);
             }
+        }
+        if (!timerReady) {
+            setTimerControlsEnabled(true);
+            timerReady = true;
+        }
+    });
+
+    // Listen for join error
+    socket.on('join_error', function(data) {
+        setTimerControlsEnabled(false);
+        if (typeof addNotification === 'function') {
+            addNotification('Room Join Error', data.message || 'Could not join room.', 'error');
+        } else {
+            alert('Room Join Error: ' + (data.message || 'Could not join room.'));
         }
     });
 
@@ -376,36 +392,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     const startSharedTimerBtn = document.getElementById('start-shared-timer');
     if(startSharedTimerBtn){
         startSharedTimerBtn.addEventListener('click', function() {
-            // No need to get all values from DOM, server will use stored/default state for start
+            if (!timerReady) return;
             socket.emit('room_timer_control', {
                 room: currentRoom,
-                action: 'start'
+                action: 'start',
+                user_id: currentUser
             });
-            playSound('sound-click'); // Added sound
+            playSound('sound-click');
         });
     }
-
     const pauseSharedTimerBtn = document.getElementById('pause-shared-timer');
     if(pauseSharedTimerBtn){
         pauseSharedTimerBtn.addEventListener('click', function() {
-            // No need to get all values from DOM, server will use stored/default state for pause
+            if (!timerReady) return;
             socket.emit('room_timer_control', {
                 room: currentRoom,
-                action: 'pause'
+                action: 'pause',
+                user_id: currentUser
             });
-            playSound('sound-click'); // Added sound
+            playSound('sound-click');
         });
     }
-
     const resetSharedTimerBtn = document.getElementById('reset-shared-timer');
     if(resetSharedTimerBtn){
         resetSharedTimerBtn.addEventListener('click', function() {
-            // Server will determine timeLeft based on current session type and its duration
+            if (!timerReady) return;
             socket.emit('room_timer_control', {
                 room: currentRoom,
-                action: 'reset'
+                action: 'reset',
+                user_id: currentUser
             });
-            playSound('sound-click'); // Added sound
+            playSound('sound-click');
         });
     }
 
@@ -421,7 +438,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 let payload = {
                     room: currentRoom,
                     action: 'duration_change',
-                    workDuration: newWorkDuration
+                    workDuration: newWorkDuration,
+                    user_id: currentUser
                 };
                 if (newBreakDuration !== null && !isNaN(newBreakDuration) && newBreakDuration > 0) {
                     payload.breakDuration = newBreakDuration;
@@ -443,7 +461,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                  let payload = {
                     room: currentRoom,
                     action: 'duration_change',
-                    breakDuration: newBreakDuration
+                    breakDuration: newBreakDuration,
+                    user_id: currentUser
                 };
                 if (newWorkDuration !== null && !isNaN(newWorkDuration) && newWorkDuration > 0) {
                     payload.workDuration = newWorkDuration;
@@ -666,36 +685,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     });
 
-    // Listen for timer updates from server
-    socket.on('room_timer_update', function(data) {
-        if (data.room !== currentRoom) return;
-        updateTimerDisplay(data.timeLeft);
-        updateSessionLabel(data.isWorkSession);
-        const startSharedTimer = document.getElementById('start-shared-timer');
-        const pauseSharedTimer = document.getElementById('pause-shared-timer');
-
-        if (startSharedTimer && pauseSharedTimer) {
-        if (data.isRunning) {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(function() {
-                if (data.timeLeft > 0) {
-                    data.timeLeft--;
-                    updateTimerDisplay(data.timeLeft);
-                } else {
-                        // handleTimerComplete(false); //This function is not defined here
-                        clearInterval(timerInterval); // Stop interval when time is up
-                }
-            }, 1000);
-                startSharedTimer.classList.add('hidden');
-                pauseSharedTimer.classList.remove('hidden');
-        } else {
-                clearInterval(timerInterval); // Clear interval if timer is paused or reset
-                pauseSharedTimer.classList.add('hidden');
-                startSharedTimer.classList.remove('hidden');
-            }
-        }
-    });
-
     // Fetch and render chat history
     fetch(`/api/room_chat_history/${currentRoom}`)
         .then(res => res.json())
@@ -827,7 +816,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             playSound('sound-click');
         });
     }
-
     const uploadImageBtn = document.getElementById('upload-image-btn');
     const imageUpload = document.getElementById('image-upload');
     if (uploadImageBtn && imageUpload) {
@@ -1026,7 +1014,7 @@ async function sendToDaphinix(message, imageFile = null) {
     }
 }
 
-function updateTimerDisplay(timeLeft) {
+function updateStudyRoomTimerDisplay(timeLeft) {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     const timerDisplayElement = document.getElementById('shared-timer-display');
@@ -1053,7 +1041,7 @@ async function fetchTimerStateAndSync() {
         const response = await fetch(`/api/room_timer_state/${currentRoom}`);
         const timerState = await response.json();
         
-        updateTimerDisplay(timerState.timeLeft);
+        updateStudyRoomTimerDisplay(timerState.timeLeft);
         updateSessionLabel(timerState.isWorkSession);
         
         // Update duration inputs
@@ -1265,4 +1253,37 @@ async function leaveVideoCall() {
     // Clear the user map
     agoraUidToNameMap = {};
     remoteUsers = {};
-} 
+}
+
+// Utility: Disable/Enable timer controls
+function setTimerControlsEnabled(enabled) {
+    const startBtn = document.getElementById('start-shared-timer');
+    const pauseBtn = document.getElementById('pause-shared-timer');
+    const resetBtn = document.getElementById('reset-shared-timer');
+    [startBtn, pauseBtn, resetBtn].forEach(btn => {
+        if (btn) btn.disabled = !enabled;
+        if (btn) btn.classList.toggle('disabled', !enabled);
+    });
+    // Optional: show spinner or overlay
+    const timerPanel = document.getElementById('timer-panel');
+    let spinner = document.getElementById('timer-sync-spinner');
+    if (!enabled) {
+        if (!spinner && timerPanel) {
+            spinner = document.createElement('div');
+            spinner.id = 'timer-sync-spinner';
+            spinner.innerHTML = '<div class="loader"></div><div class="text-white text-center mt-2">Syncing timer...</div>';
+            spinner.style.position = 'absolute';
+            spinner.style.top = '50%';
+            spinner.style.left = '50%';
+            spinner.style.transform = 'translate(-50%, -50%)';
+            spinner.style.zIndex = '100';
+            timerPanel.appendChild(spinner);
+        }
+    } else {
+        if (spinner && timerPanel) timerPanel.removeChild(spinner);
+    }
+}
+
+// Initially disable timer controls until sync
+setTimerControlsEnabled(false);
+let timerReady = false;
