@@ -2589,7 +2589,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Define avatar HTML. User has no avatar, Sana has a specific one.
             const avatarImg = isUser 
                 ? '' 
-                : '<img src="/static/assets/logo/sana.png" alt="Sana" class="w-8 h-8 rounded-full">';
+                : '<img src="/static/assets/logo/sana.webp" alt="Sana" class="w-8 h-8 rounded-full">';
 
             const senderName = isUser ? 'You' : 'Sana';
 
@@ -2675,7 +2675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 $(`#${indicatorId}`).remove();
 
                 if (show) {
-                    const avatarImg = '<img src="/static/assets/logo/sana.png" alt="Sana" class="w-8 h-8 rounded-full">';
+                    const avatarImg = '<img src="/static/assets/logo/sana.webp" alt="Sana" class="w-8 h-8 rounded-full">';
                     const typingIndicatorHTML = `
                         <div class="message bot-message animate-fade-in" id="${indicatorId}">
                             <div class="message-avatar-placeholder">
