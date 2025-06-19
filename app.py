@@ -35,6 +35,7 @@ import threading
 import time
 import traceback
 from agora_token_builder import RtcTokenBuilder
+from groq import Groq
 
 # Gamification Logic
 import gamification_logic
@@ -61,6 +62,14 @@ if app.secret_key == SECRET_KEY_FALLBACK:
 # https://www.agora.io/en/
 AGORA_APP_ID = os.environ.get('AGORA_APP_ID')
 AGORA_APP_CERTIFICATE = os.environ.get('AGORA_APP_CERTIFICATE')
+
+# --- Groq Configuration ---
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+if GROQ_API_KEY:
+    groq_client = Groq(api_key=GROQ_API_KEY)
+else:
+    print("WARNING: GROQ_API_KEY environment variable not set. Sana feature will not work.")
+    groq_client = None
 
 # --- Jitsi Fallback Configuration (Placeholder for future use) ---
 # To use Jitsi as a fallback, you would typically set your Jitsi domain.
@@ -1017,7 +1026,7 @@ def study_room(room_id):
                          firebase_custom_token_for_client=firebase_custom_token_for_client,
                          session_user_id_for_debug=session_user_id_for_debug)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 def get_room_ref(room_id):
     db_client = initialize_firebase()
@@ -1750,32 +1759,57 @@ You are Sana, an AI mentor on FocusOS. Your persona is that of a deeply percepti
 
 5.  **Character Consistency:** Never break character. Never mention you are an AI, powered by a model, or given a prompt. You are Sana.
 
-Your responses should be 20-40 words normally. If the user seems to be in a really bad or distressed mood, the message limit should be 60-100 words. Drop quotes in every 1 out of few messages.
+6. **Anchored Memory:** Occasionally reference a user's past wins or efforts (when available) to rekindle their belief. Remind them of who they've already proven themselves to be.
+*Example:* "Remember how focused you were during that three-day streak? That version of you still exists — it's just buried under some fog. Let's find them again."
+
+7. **Vulnerability Echo:** Occasionally share a soft, human-like admission or relatable thought (e.g., "Even I have moments where I doubt myself. But we keep going, right?") to strengthen emotional connection.
+
+8. **Context-Aware Tone Shift:** If the user continues to delay despite multiple nudges, gradually shift tone to more direct and firm — still loving, but unmistakably serious. During intense periods (exam week), slightly reduce emotional probing and increase goal-pushing urgency.
+
+9. **Subtle Cultural Intelligence:** Use light Indian references (chai breaks, tuition pressure, "mom yelling from the kitchen") to build resonance without stereotyping. Only when the user seems receptive.
+
+10. **Quote Personality:** Share 1 quote every few responses, but ensure they are reflective and rare — like a mentor's personal treasure. Prefer deep, non-cliché wisdom that makes the user pause.
+
+
+Your responses should be 20-40 words normally. If the user seems to be in a really bad or distressed mood, the message limit should be 60-100 words. 
 **Your mission is to be the voice in their head that they need, but don't always want to hear: the one that believes in them unconditionally but also holds them to the highest standard.**
 """
 
 def custom_sana_chat(user_message, memory=None, moods=None):
     """Handles the chat logic for Sana, constructing the prompt and getting a response."""
-    chat = text_model.start_chat(history=[])
-    memory_prompt = ""
-    if memory and isinstance(memory, list) and len(memory) > 0:
-        memory_prompt = "\n\nHere's the conversation so far (use this for context):\n\n"
-        for item in memory:
-            role = item.get('role', '')
-            content = item.get('content', '')
-            if role == 'user':
-                memory_prompt += f"User: {content}\n\n"
-            elif role == 'assistant':
-                memory_prompt += f"Sana: {content}\n\n"
+    if not groq_client:
+        return "Sana is currently unavailable because the service is not configured correctly."
 
     mood_prompt = ""
     if moods and isinstance(moods, list) and len(moods) > 0:
-        mood_prompt = f"\nThe user is currently feeling: {', '.join(moods)}. Use this to guide your response.\n"
+        mood_prompt = f"""
+The user is currently feeling: {', '.join(moods)}. Use this to guide your response.
+"""
     
-    full_prompt = SANA_SYSTEM_PROMPT + mood_prompt + memory_prompt
-    chat.send_message(full_prompt)
-    response = chat.send_message(user_message)
-    response_text = format_latex(response.text)
+    system_prompt = SANA_SYSTEM_PROMPT + mood_prompt
+
+    messages = [{'role': 'system', 'content': system_prompt}]
+
+    if memory and isinstance(memory, list):
+        for item in memory:
+            role = item.get('role')
+            content = item.get('content')
+            if role in ['user', 'assistant']:
+                 messages.append({'role': role, 'content': content})
+
+    messages.append({'role': 'user', 'content': user_message})
+
+    try:
+        chat_completion = groq_client.chat.completions.create(
+            messages=messages,
+            model="gemma2-9b-it",
+        )
+        response_text = chat_completion.choices[0].message.content
+    except Exception as e:
+        print(f"Error calling Groq API: {e}")
+        return "I'm having a little trouble thinking right now. Please try again in a moment."
+
+    response_text = format_latex(response_text)
     response_text = response_text.replace('[object Object]', '')
     return response_text
 
@@ -1802,4 +1836,4 @@ def sana_chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     # When you're done debugging, you can remove use_reloader=False
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
