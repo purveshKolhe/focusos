@@ -2,6 +2,11 @@
 
 A gamified study platform with AI-powered assistance.
 
+Created and maintained by **Purvesh Kolhe**  
+Initial concept, design, and codebase built from March–May 2025.  
+This is a private project. Contributors joined after core architecture.
+
+
 ## Setup Instructions
 
 1. Install Python dependencies:
@@ -44,4 +49,7 @@ The application uses:
 - Flask for the backend
 - Firebase for data storage
 - Google's Generative AI for the study assistant
-- Tailwind CSS for styling 
+- Tailwind CSS for styling
+
+
+FocusOS is a proprietary closed-source project created solely by Purvesh Kolhe. All contributors joined post-alpha and no part of this project may be used in external competitions without written permission.
